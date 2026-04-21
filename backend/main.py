@@ -86,15 +86,19 @@ async def refresh_events():
         db.close()
 
 
+_startup_error: str | None = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created/verified")
-
-    # Seed initial data
-    await seed_database()
-
+    global _startup_error
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified")
+        await seed_database()
+    except Exception as e:
+        import traceback
+        _startup_error = traceback.format_exc()
+        logger.error(f"Startup error (non-fatal): {e}")
     yield
 
 
@@ -132,6 +136,11 @@ app.include_router(quiz.router, prefix="/api/quiz")
 app.include_router(admin.router, prefix="/api/admin")
 app.include_router(events.router, prefix="/api/events")
 app.include_router(courses.router, prefix="/api/courses")
+
+
+@app.get("/api/debug")
+def debug():
+    return {"startup_error": _startup_error, "database_url_set": bool(os.getenv("DATABASE_URL"))}
 
 
 @app.get("/")
