@@ -126,12 +126,12 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(auth_router.router, prefix="/auth")
-app.include_router(users.router, prefix="/users")
-app.include_router(quiz.router, prefix="/quiz")
-app.include_router(admin.router, prefix="/admin")
-app.include_router(events.router, prefix="/events")
-app.include_router(courses.router, prefix="/courses")
+app.include_router(auth_router.router, prefix="/api/auth")
+app.include_router(users.router, prefix="/api/users")
+app.include_router(quiz.router, prefix="/api/quiz")
+app.include_router(admin.router, prefix="/api/admin")
+app.include_router(events.router, prefix="/api/events")
+app.include_router(courses.router, prefix="/api/courses")
 
 
 @app.get("/")
