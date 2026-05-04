@@ -180,7 +180,7 @@ def _parse_rss(xml_text: str, source: str, tags: str, max_items: int = 4) -> lis
             if pub_date:
                 try:
                     dt = datetime.strptime(pub_date[:25], "%a, %d %b %Y %H:%M:%S")
-                    date_str = dt.strftime("%-d %B %Y")
+                    date_str = f"{dt.day} {dt.strftime('%B %Y')}"
                 except Exception:
                     date_str = pub_date[:16]
 
@@ -225,7 +225,7 @@ def _parse_rss(xml_text: str, source: str, tags: str, max_items: int = 4) -> lis
             if pub_date:
                 try:
                     dt = datetime.strptime(pub_date, "%Y-%m-%d")
-                    date_str = dt.strftime("%-d %B %Y")
+                    date_str = f"{dt.day} {dt.strftime('%B %Y')}"
                 except Exception:
                     date_str = pub_date
 

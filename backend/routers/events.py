@@ -1,19 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, calculate_level
+from auth import get_current_user, calculate_level, verify_token
 
 router = APIRouter(tags=["events"])
+
+
+def _get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optional[models.User]:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[7:]
+    payload = verify_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    return db.query(models.User).filter(models.User.id == int(user_id), models.User.is_active == True).first()
 
 
 @router.get("/", response_model=list[schemas.EventOut])
 def list_events(
     event_type: Optional[str] = Query(None),
-    current_user: models.User = Depends(get_current_user),
+    current_user: Optional[models.User] = Depends(_get_optional_user),
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Event).filter(models.Event.is_active == True)
@@ -23,12 +37,13 @@ def list_events(
 
     events = query.order_by(models.Event.created_at.desc()).all()
 
-    # Get user's registrations
-    user_reg_ids = {
-        reg.event_id for reg in db.query(models.EventRegistration).filter(
-            models.EventRegistration.user_id == current_user.id
-        ).all()
-    }
+    user_reg_ids: set[int] = set()
+    if current_user:
+        user_reg_ids = {
+            reg.event_id for reg in db.query(models.EventRegistration).filter(
+                models.EventRegistration.user_id == current_user.id
+            ).all()
+        }
 
     result = []
     for event in events:

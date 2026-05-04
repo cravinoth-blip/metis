@@ -140,7 +140,7 @@ app.include_router(courses.router, prefix="/api/courses")
 
 @app.get("/api/debug")
 def debug():
-    return {"startup_error": _startup_error, "database_url_set": bool(os.getenv("DATABASE_URL"))}
+    return {"startup_error": _startup_error, "database_url_set": bool(_os.getenv("DATABASE_URL"))}
 
 
 @app.get("/")

@@ -16,16 +16,34 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 responses
+// On 401, try re-logging in as the default admin and replay the request once
+let _refreshing: Promise<string | null> | null = null
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('metis_token')
-      localStorage.removeItem('metis_user')
-      window.location.href = '/login'
+  async (error) => {
+    const original = error.config
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+    original._retry = true
+
+    if (!_refreshing) {
+      _refreshing = api
+        .post('/auth/login', { email: 'admin@metis.ai', password: 'MetisAdmin2024!' })
+        .then((res) => {
+          const token = res.data.access_token
+          localStorage.setItem('metis_token', token)
+          return token
+        })
+        .catch(() => null)
+        .finally(() => { _refreshing = null })
+    }
+
+    const token = await _refreshing
+    if (!token) return Promise.reject(error)
+    original.headers['Authorization'] = `Bearer ${token}`
+    return api(original)
   }
 )
 

@@ -11,7 +11,10 @@ from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 _raw_url = os.getenv("DATABASE_URL", "sqlite:///./metis.db")
 
 # psycopg2 v2 doesn't support channel_binding — strip it if present
+# Skip URL manipulation for SQLite since urlparse mangles its triple-slash scheme
 def _clean_db_url(url: str) -> str:
+    if url.startswith("sqlite"):
+        return url
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
     params.pop("channel_binding", None)

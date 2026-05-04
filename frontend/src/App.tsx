@@ -4,6 +4,22 @@ import { User } from './lib/api'
 import { getSavedUser, clearAuth, saveAuth } from './lib/auth'
 import api from './lib/api'
 
+const GUEST_USER: User = {
+  id: 0,
+  email: 'guest@metis.local',
+  username: 'guest',
+  full_name: 'Guest',
+  department: 'General',
+  avatar_initials: 'G',
+  is_admin: true,
+  is_active: true,
+  xp: 0,
+  level: 1,
+  streak: 0,
+  last_login: null,
+  created_at: new Date().toISOString(),
+}
+
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import Toast from './components/Toast'
@@ -56,17 +72,12 @@ export function useToast() {
   return useContext(ToastContext)
 }
 
-// Protected route
+// Auth disabled — all routes are open
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
-  if (!user.is_admin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -89,7 +100,8 @@ function AppShell({ children, pageTitle }: { children: React.ReactNode; pageTitl
 }
 
 export default function App() {
-  const [user, setUserState] = useState<User | null>(getSavedUser())
+  const [user, setUserState] = useState<User | null>(getSavedUser() ?? GUEST_USER)
+  const [authReady, setAuthReady] = useState(() => !!localStorage.getItem('metis_token'))
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   let toastIdRef = React.useRef(0)
 
@@ -116,6 +128,32 @@ export default function App() {
     }
   }, [setUser])
 
+  // Auto-login: if no token is stored, authenticate as the default admin account
+  useEffect(() => {
+    const token = localStorage.getItem('metis_token')
+    if (token) {
+      setAuthReady(true)
+      return
+    }
+    ;(async () => {
+      try {
+        const loginRes = await api.post('/auth/login', {
+          email: 'admin@metis.ai',
+          password: 'MetisAdmin2024!',
+        })
+        const { access_token } = loginRes.data
+        localStorage.setItem('metis_token', access_token)
+        const meRes = await api.get('/auth/me')
+        saveAuth(access_token, meRes.data)
+        setUserState(meRes.data)
+      } catch {
+        // backend unavailable — guest user stays in place
+      } finally {
+        setAuthReady(true)
+      }
+    })()
+  }, [])
+
   const showToast = useCallback((message: string, type: ToastMessage['type'] = 'info') => {
     const id = ++toastIdRef.current
     setToasts((prev) => [...prev, { id, message, type }])
@@ -127,6 +165,8 @@ export default function App() {
   const removeToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
+
+  if (!authReady) return null
 
   return (
     <AuthContext.Provider value={{ user, setUser, logout, refreshUser }}>

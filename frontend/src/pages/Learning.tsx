@@ -90,8 +90,9 @@ export default function Learning() {
     try {
       const res = await api.get('/courses/')
       setCourses(res.data)
-    } catch {
-      // Fallback silently — user will see empty state
+    } catch (err) {
+      console.error(err)
+      showToast('Failed to load courses', 'error')
     } finally {
       setLoading(false)
     }
