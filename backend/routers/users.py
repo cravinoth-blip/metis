@@ -19,9 +19,9 @@ def get_my_stats(
         models.QuizAttempt.user_id == current_user.id
     ).count()
 
-    courses_completed = db.query(models.CourseProgress).filter(
-        models.CourseProgress.user_id == current_user.id,
-        models.CourseProgress.completed == True
+    courses_completed = db.query(models.LearningProgress).filter(
+        models.LearningProgress.user_id == current_user.id,
+        models.LearningProgress.completed == True
     ).count()
 
     tools_used = db.query(func.count(func.distinct(models.ToolUsage.tool_name))).filter(

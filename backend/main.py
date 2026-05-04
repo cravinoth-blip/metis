@@ -1,55 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from database import engine, Base, SessionLocal
 from routers import auth_router, users, quiz, admin, events, courses
 import models
 from scraper import scrape_ai_events
+from pathlib import Path
 import logging
+import uvicorn
+from database_seeders.main_seeder import seed_database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-async def seed_database():
-    """Create default admin user and seed events if DB is empty."""
-    db = SessionLocal()
-    try:
-        from models import User, Event
-        from auth import hash_password
-
-        # Create admin if not exists
-        existing_admin = db.query(User).filter(User.email == "admin@metis.ai").first()
-        if not existing_admin:
-            admin_user = User(
-                email="admin@metis.ai",
-                username="admin",
-                hashed_password=hash_password("MetisAdmin2024!"),
-                full_name="Metis Administrator",
-                department="Platform",
-                avatar_initials="MA",
-                is_admin=True,
-                xp=9999,
-                level=20
-            )
-            db.add(admin_user)
-            logger.info("Created default admin user: admin@metis.ai")
-
-        # Seed events if none exist
-        if db.query(Event).count() == 0:
-            logger.info("Seeding initial events...")
-            scraped = await scrape_ai_events()
-            for evt_data in scraped:
-                evt = Event(**evt_data, is_active=True)
-                db.add(evt)
-            logger.info(f"Seeded {len(scraped)} events")
-
-        db.commit()
-    except Exception as e:
-        logger.error(f"Seeding error: {e}")
-        db.rollback()
-    finally:
-        db.close()
 
 
 async def refresh_events():
@@ -110,6 +76,10 @@ app = FastAPI(
 )
 
 import os as _os
+
+_TEMPLATES_DIR = Path(__file__).parent / "templates"
+_STATIC_DIR = Path(__file__).parent / "static"
+
 _ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -143,15 +113,27 @@ def debug():
     return {"startup_error": _startup_error, "database_url_set": bool(_os.getenv("DATABASE_URL"))}
 
 
-@app.get("/")
-def root():
-    return {
-        "message": "Metis Learning Platform API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
-
-
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+_templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+
+
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(request: Request):
+    return _templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
+async def serve_spa(request: Request, full_path: str):
+    return _templates.TemplateResponse("index.html", {"request": request})
+
+
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

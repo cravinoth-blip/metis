@@ -7,7 +7,7 @@ from database import get_db
 import models
 import schemas
 from auth import get_current_user, calculate_level
-from quiz_data import QUIZZES
+from default_data.quiz_data import QUIZZES
 
 router = APIRouter(tags=["quiz"])
 

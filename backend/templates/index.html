@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metis</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">M</div>
+        <span class="logo-text">Metis</span>
+      </div>
+      <nav id="nav-links">
+        <a href="/dashboard"        class="nav-link" data-route="/dashboard">        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+        <a href="/skillgames"       class="nav-link" data-route="/skillgames">       <span class="nav-icon">🎮</span><span class="nav-label">Skill Games</span></a>
+        <a href="/learning"         class="nav-link" data-route="/learning">         <span class="nav-icon">📚</span><span class="nav-label">Learning</span></a>
+        <a href="/whatson"          class="nav-link" data-route="/whatson">          <span class="nav-icon">📅</span><span class="nav-label">What's On</span></a>
+        <a href="/aitools"          class="nav-link" data-route="/aitools">          <span class="nav-icon">🤖</span><span class="nav-label">AI Tools</span></a>
+        <a href="/enterprisetools"  class="nav-link" data-route="/enterprisetools">  <span class="nav-icon">🏢</span><span class="nav-label">Enterprise</span></a>
+        <a href="/admin"            class="nav-link hidden" data-route="/admin" id="admin-link"><span class="nav-icon">⚙️</span><span class="nav-label">Admin</span></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-user-card">
+          <div class="avatar" id="sidebar-avatar">??</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebar-name">—</div>
+            <div class="sidebar-user-xp" id="sidebar-xp">0 XP · Lv 0</div>
+          </div>
+        </div>
+        <button id="logout-btn">🚪 Sign out</button>
+      </div>
+    </aside>
+
+    <div id="main-wrapper">
+      <header id="topbar">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="topbar-user">
+          <span class="xp-chip" id="topbar-xp">⚡ 0 XP</span>
+          <div class="avatar" id="topbar-avatar">??</div>
+        </div>
+      </header>
+      <main id="content">
+        <div class="loading">Loading…</div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Any
+from pydantic import BaseModel, EmailStr, ConfigDict
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 
 
@@ -254,3 +254,249 @@ class ModuleCompleteResult(BaseModel):
     progress_pct: int
     course_completed: bool
     already_completed: bool
+
+
+# Learning resource schemas (public)
+class LearningModuleOut(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    order: int = 0
+    duration_min: Optional[int] = None
+    xp_reward: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class LearningWithModulesOut(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    level: int = 1
+    tags: Optional[str] = None
+    estimated_duration_min: Optional[int] = None
+    xp_reward: int = 0
+    is_mandatory: bool = False
+    module_count: int = 0
+    modules: List[LearningModuleOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+# Admin-only learning schemas
+class LearningOut(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    level: int = 1
+    tags: Optional[str] = None
+    estimated_duration_min: Optional[int] = None
+    xp_reward: int = 0
+    is_mandatory: bool = False
+    is_active: bool = True
+    module_count: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LearningCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    level: int = 1
+    tags: Optional[str] = None
+    estimated_duration_min: Optional[int] = None
+    xp_reward: int = 0
+    is_mandatory: bool = False
+
+
+class LearningUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    level: Optional[int] = None
+    tags: Optional[str] = None
+    estimated_duration_min: Optional[int] = None
+    xp_reward: Optional[int] = None
+    is_mandatory: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+
+# Workshop schemas (public)
+class WorkshopOut(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    level: int = 1
+    tags: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    location: Optional[str] = None
+    format: Optional[str] = None
+    capacity: Optional[int] = None
+    organizer: Optional[str] = None
+    xp_reward: int = 0
+
+    class Config:
+        from_attributes = True
+
+# Admin-only workshop schemas (includes timestamps and status)
+class WorkshopAdminOut(WorkshopOut):
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Input schema for creating a workshop
+class WorkshopCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    level: int = 1
+    tags: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    location: Optional[str] = None
+    format: Optional[str] = None
+    capacity: Optional[int] = None
+    organizer: Optional[str] = None
+    xp_reward: int = 0
+
+# Input schema for updating a workshop
+class WorkshopUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    level: Optional[int] = None
+    tags: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    location: Optional[str] = None
+    format: Optional[str] = None
+    capacity: Optional[int] = None
+    organizer: Optional[str] = None
+    xp_reward: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+# Shared properties
+class LearningModuleBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    content_text: Optional[str] = None
+    content_url: Optional[str] = None
+    order: int = 0
+    duration_min: Optional[int] = None
+    xp_reward: int = 0
+
+# Properties to receive on module creation
+class LearningModuleCreate(LearningModuleBase):
+    learning_id: str
+
+# Properties to receive on module update
+class LearningModuleUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    content_text: Optional[str] = None
+    content_url: Optional[str] = None
+    order: Optional[int] = None
+    duration_min: Optional[int] = None
+    xp_reward: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# Properties to return to client
+class LearningModuleOut(LearningModuleBase):
+    id: str
+    learning_id: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LearningModuleDetailOut(BaseModel):
+    id: str
+    learning_id: str
+    title: str
+    description: Optional[str] = None
+    duration_min: Optional[int] = 0
+    xp_reward: Optional[int] = 0
+    content_url: Optional[str] = None
+    sections: List[Dict[str, Any]] = []
+
+
+
+class LearningSummary(BaseModel):
+    # Data from models.Learning
+    id: str
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    level: int
+    duration: Optional[int] = None  # Maps to estimated_duration_min
+    
+    # Computed fields (calculated in the router for the current user)
+    total_modules: int
+    progress_pct: int
+    modules_completed: List[int] = []
+
+    # UI specific fields (often used in frontend cards)
+    # If these aren't in your DB yet, you can set defaults or make them Optional
+    emoji: Optional[str] = "📚" 
+    color: Optional[str] = "#4F46E5"
+
+    model_config = ConfigDict(from_attributes=True)
+
+class LearningModuleOut(BaseModel):
+    """Schema for individual modules within a learning resource."""
+    id: str
+    title: str
+    order: int
+    duration_min: Optional[int] = None
+    xp_reward: int
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+class LearningWithModulesOut(LearningSummary):
+    """
+    Used for the detail view where you need 
+    the full list of modules objects included.
+    """
+    modules: List[LearningModuleOut]
+
+
+
+class BuilderSection(BaseModel):
+    type: str
+    heading: Optional[str] = ""
+    body: Optional[str] = ""
+    points: Optional[List[str]] = []
+
+class ModuleBuilderCreate(BaseModel):
+    title: str
+    duration: int = 10
+    xp_reward: int = 50
+    sections: List[BuilderSection] = []

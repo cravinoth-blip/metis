@@ -1,16 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime, timedelta
+from typing import Any, List
 import json
+import uuid
 from database import get_db
 import models
 import schemas
 from auth import get_current_admin, calculate_level
-from quiz_data import QUIZZES
+from default_data.quiz_data import QUIZZES
 from scraper import scrape_ai_events
+from pydantic import BaseModel
 
 router = APIRouter(tags=["admin"])
+
+class ModuleBuildData(BaseModel):
+    title: str
+    duration: int = 0
+    xp_reward: int = 0
+    sections: List[Any] = []
 
 
 @router.get("/stats", response_model=schemas.PlatformStats)
@@ -244,6 +253,148 @@ async def trigger_scrape(
         raise HTTPException(status_code=500, detail=f"Scrape failed: {str(e)}")
 
 
+@router.get("/learnings", response_model=list[schemas.LearningOut])
+def list_learnings(
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learnings = (
+        db.query(models.Learning)
+        .options(joinedload(models.Learning.modules))
+        .order_by(models.Learning.created_at.desc())
+        .all()
+    )
+    result = []
+    for learning in learnings:
+        item = schemas.LearningOut.model_validate(learning)
+        item.module_count = sum(1 for m in learning.modules if m.is_active)
+        result.append(item)
+    return result
+
+
+@router.post("/learnings", response_model=schemas.LearningOut, status_code=201)
+def create_learning(
+    data: schemas.LearningCreate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = models.Learning(
+        id=str(uuid.uuid4()),
+        **data.model_dump(),
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(learning)
+    db.commit()
+    db.refresh(learning)
+    return learning
+
+
+@router.put("/learnings/{learning_id}", response_model=schemas.LearningOut)
+def update_learning(
+    learning_id: str,
+    data: schemas.LearningUpdate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Learning not found")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(learning, field, value)
+    learning.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(learning)
+    return learning
+
+
+@router.delete("/learnings/{learning_id}")
+def delete_learning(
+    learning_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Learning not found")
+    learning.is_active = False
+    learning.updated_at = datetime.utcnow()
+    db.commit()
+    return {"message": "Learning deactivated"}
+
+@router.get("/workshops", response_model=list[schemas.WorkshopOut])
+def list_workshops(
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    # Retrieve all workshops, ordered by most recent creation
+    workshops = (
+        db.query(models.Workshop)
+        .order_by(models.Workshop.created_at.desc())
+        .all()
+    )
+    return workshops
+
+@router.post("/workshops", response_model=schemas.WorkshopOut, status_code=201)
+def create_workshop(
+    data: schemas.WorkshopCreate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    workshop = models.Workshop(
+        id=str(uuid.uuid4()),
+        **data.model_dump(),
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(workshop)
+    db.commit()
+    db.refresh(workshop)
+    return workshop
+
+@router.put("/workshops/{workshop_id}", response_model=schemas.WorkshopOut)
+def update_workshop(
+    workshop_id: str,
+    data: schemas.WorkshopUpdate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    workshop = db.query(models.Workshop).filter(models.Workshop.id == workshop_id).first()
+    
+    if not workshop:
+        raise HTTPException(status_code=404, detail="Workshop not found")
+    
+    # Update fields provided in the request
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(workshop, field, value)
+    
+    workshop.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(workshop)
+    return workshop
+
+@router.delete("/workshops/{workshop_id}")
+def delete_workshop(
+    workshop_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    workshop = db.query(models.Workshop).filter(models.Workshop.id == workshop_id).first()
+    
+    if not workshop:
+        raise HTTPException(status_code=404, detail="Workshop not found")
+    
+    # Soft delete: set is_active to False
+    workshop.is_active = False
+    workshop.updated_at = datetime.utcnow()
+    
+    db.commit()
+    return {"message": "Workshop deactivated"}
+
+
 @router.get("/tool-usage")
 def get_tool_usage_analytics(
     _=Depends(get_current_admin),
@@ -267,3 +418,234 @@ def get_tool_usage_analytics(
         "tool_usage": [{"tool_name": r.tool_name, "count": r.count} for r in usage_counts],
         "department_usage": [{"department": r.department or "Unknown", "count": r.count} for r in dept_usage]
     }
+
+
+@router.get("/learnings/{learning_id}/modules", response_model=list[schemas.LearningModuleOut])
+def list_learning_modules(
+    learning_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    modules = (
+        db.query(models.LearningModule)
+        .filter(models.LearningModule.learning_id == learning_id)
+        # Optional: .filter(models.LearningModule.is_active == True) if you only want active ones
+        .order_by(models.LearningModule.order.asc())
+        .all()
+    )
+    return modules
+
+
+@router.post("/learnings/{learning_id}/modules", response_model=schemas.LearningModuleOut, status_code=201)
+def create_learning_module(
+    learning_id: str,
+    data: schemas.LearningModuleCreate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    # Verify the parent learning exists
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Parent Learning resource not found")
+
+    # If the frontend passes `learning_id` inside the JSON body as well, 
+    # we exclude it from the dump so it doesn't conflict with our path parameter.
+    dump_data = data.model_dump(exclude={"learning_id"})
+
+    module = models.LearningModule(
+        id=str(uuid.uuid4()),
+        learning_id=learning_id,
+        **dump_data,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    
+    db.add(module)
+    db.commit()
+    db.refresh(module)
+    return module
+
+
+@router.post("/learnings/{learning_id}/modules/build", status_code=201)
+def build_learning_module(
+    learning_id: str,
+    data: ModuleBuildData,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Learning not found")
+
+    existing_count = db.query(models.LearningModule).filter(
+        models.LearningModule.learning_id == learning_id,
+        models.LearningModule.is_active == True,
+    ).count()
+
+    module = models.LearningModule(
+        id=str(uuid.uuid4()),
+        learning_id=learning_id,
+        title=data.title,
+        content_text=json.dumps(data.sections),
+        order=existing_count,
+        duration_min=data.duration or None,
+        xp_reward=data.xp_reward,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(module)
+    db.commit()
+    db.refresh(module)
+    return {"id": module.id, "message": "Module created"}
+
+
+@router.get("/learning-modules/{module_id}")
+def get_learning_module_admin(
+    module_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Learning module not found")
+    return module
+
+
+@router.put("/learning-modules/{module_id}", response_model=schemas.LearningModuleOut)
+def update_learning_module(
+    module_id: str,
+    data: schemas.LearningModuleUpdate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Learning module not found")
+
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(module, field, value)
+        
+    module.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(module)
+    return module
+
+
+@router.delete("/learning-modules/{module_id}")
+def delete_learning_module(
+    module_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Learning module not found")
+
+    # Soft delete
+    module.is_active = False
+    module.updated_at = datetime.utcnow()
+    
+    db.commit()
+    return {"message": "Learning module deactivated"}
+
+@router.get("/learnings/{learning_id}", response_model=schemas.LearningOut)
+def get_learning(
+    learning_id: str,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Learning not found")
+    
+    # Manually calculate module_count for the frontend
+    item = schemas.LearningOut.model_validate(learning)
+    item.module_count = db.query(models.LearningModule).filter(
+        models.LearningModule.learning_id == learning_id, 
+        models.LearningModule.is_active == True
+    ).count()
+    
+    return item
+
+def builder_sections_to_markdown(sections: list[schemas.BuilderSection]) -> str:
+    """Helper to convert the frontend builder JSON into a single Markdown string."""
+    md_parts = []
+    
+    for s in sections:
+        t = (s.type or "").lower()
+        heading = s.heading.strip() if s.heading else ""
+        body = s.body.strip() if s.body else ""
+        points = s.points or []
+
+        if heading:
+            md_parts.append(f"### {heading}")
+
+        if t == "text" and body:
+            md_parts.append(body)
+            
+        elif t == "key_points" and points:
+            bullets = "\n".join([f"- {p}" for p in points if str(p).strip()])
+            md_parts.append(bullets)
+            
+        elif t == "steps" and points:
+            steps = "\n".join([f"{i+1}. {p}" for i, p in enumerate(points) if str(p).strip()])
+            md_parts.append(steps)
+            
+        elif t == "tip" and body:
+            md_parts.append(f"> 💡 **Tip:** {body}")
+            
+        elif t == "warning" and body:
+            md_parts.append(f"> ⚠️ **Warning:** {body}")
+            
+        elif t == "example" and body:
+            md_parts.append(f"> 📝 **Example:** {body}")
+
+    return "\n\n".join(md_parts).strip()
+
+
+@router.post("/learnings/{learning_id}/modules/build", response_model=schemas.LearningModuleOut, status_code=201)
+def build_learning_module(
+    learning_id: str,
+    data: schemas.ModuleBuilderCreate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Takes dynamic sections from the frontend Module Builder and saves them as Markdown."""
+    
+    # 1. Verify parent learning resource exists
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Parent Learning resource not found")
+
+    # 2. Determine the order for the new module (put it at the end)
+    current_count = db.query(models.LearningModule).filter(
+        models.LearningModule.learning_id == learning_id
+    ).count()
+
+    # 3. Convert sections to markdown
+    compiled_markdown = builder_sections_to_markdown(data.sections)
+
+    # 4. Create the module
+    module = models.LearningModule(
+        id=str(uuid.uuid4()),
+        learning_id=learning_id,
+        title=data.title,
+        description=None,
+        content_text=compiled_markdown, # Save compiled markdown here!
+        content_url=None,
+        order=current_count, # Auto-assign the next order index
+        duration_min=data.duration,
+        xp_reward=data.xp_reward,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    
+    db.add(module)
+    db.commit()
+    db.refresh(module)
+    
+    return module

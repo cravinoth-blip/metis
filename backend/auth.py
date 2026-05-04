@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "metis-super-secret-key-change-in-productio
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate_error=False)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
