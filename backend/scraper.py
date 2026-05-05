@@ -1,4 +1,4 @@
-import httpx
+﻿import httpx
 from bs4 import BeautifulSoup
 import asyncio
 import xml.etree.ElementTree as ET
@@ -287,7 +287,7 @@ TRAINING_EVENTS = [
     {
         "title": "AI in Medical Writing: Practical Prompting",
         "description": "Hands-on session covering prompt frameworks for CSR drafting, plain language summaries, and navigating hallucination risks.",
-        "event_type": "lunch",
+        "event_type": "launch",
         "host": "Metis Learning Team",
         "event_date": "Tue 25 March 2025",
         "event_time": "12:30 - 13:30",
@@ -343,7 +343,7 @@ TRAINING_EVENTS = [
     {
         "title": "DeepL Pro for Global Publications",
         "description": "Learn to use DeepL Pro for translating manuscripts, labels, and patient materials while preserving formatting and scientific terminology.",
-        "event_type": "lunch",
+        "event_type": "launch",
         "host": "Global Content Team",
         "event_date": "Tue 1 April 2025",
         "event_time": "12:30 - 13:15",

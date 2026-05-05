@@ -1,8 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useToast } from '../App'
 import api, { PlatformStats, Event } from '../lib/api'
 
-type AdminTab = 'overview' | 'users' | 'events' | 'analytics'
+type AdminTab = 'overview' | 'users' | 'events' | 'analytics' | 'learnings'
+
+interface Learning {
+  id: string
+  title: string
+  description: string
+  category: string
+  level: number
+  module_count: number
+  is_active: boolean
+  xp_reward: number
+}
+
+interface LearningModule {
+  id: string
+  learning_id: string
+  title: string
+  description: string | null
+  order: number
+  duration_min: number | null
+  xp_reward: number
+  is_active: boolean
+}
 
 interface AdminUser {
   id: number
@@ -45,6 +67,15 @@ export default function Admin() {
   const [showEventModal, setShowEventModal] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [scraping, setScraping] = useState(false)
+
+  const [learnings, setLearnings] = useState<Learning[]>([])
+  const [editingLearning, setEditingLearning] = useState<Learning | null>(null)
+  const [learningModules, setLearningModules] = useState<LearningModule[]>([])
+  const [showModulesModal, setShowModulesModal] = useState(false)
+  const [savingOrder, setSavingOrder] = useState(false)
+  const [loadingModules, setLoadingModules] = useState(false)
+  const dragIndex = useRef<number | null>(null)
+  const dragOverIndex = useRef<number | null>(null)
 
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -160,6 +191,64 @@ export default function Admin() {
       event_date: '', event_time: '', location: '', tags: '[]',
       xp_reward: 0, capacity: 0, source_url: '',
     })
+  }
+
+  useEffect(() => {
+    if (activeTab === 'learnings' && learnings.length === 0) {
+      api.get('/admin/learnings').then((r) => setLearnings(r.data)).catch(() => showToast('Failed to load learnings', 'error'))
+    }
+  }, [activeTab])
+
+  const openEditModules = async (learning: Learning) => {
+    setEditingLearning(learning)
+    setLoadingModules(true)
+    setShowModulesModal(true)
+    try {
+      const res = await api.get(`/admin/learnings/${learning.id}/modules`)
+      const sorted = [...res.data].sort((a: LearningModule, b: LearningModule) => a.order - b.order)
+      setLearningModules(sorted)
+    } catch {
+      showToast('Failed to load modules', 'error')
+    } finally {
+      setLoadingModules(false)
+    }
+  }
+
+  const handleDragStart = (index: number) => {
+    dragIndex.current = index
+  }
+
+  const handleDragEnter = (index: number) => {
+    dragOverIndex.current = index
+  }
+
+  const handleDragEnd = () => {
+    if (dragIndex.current === null || dragOverIndex.current === null) return
+    if (dragIndex.current === dragOverIndex.current) return
+    const updated = [...learningModules]
+    const [moved] = updated.splice(dragIndex.current, 1)
+    updated.splice(dragOverIndex.current, 0, moved)
+    setLearningModules(updated)
+    dragIndex.current = null
+    dragOverIndex.current = null
+  }
+
+  const handleSaveOrder = async () => {
+    setSavingOrder(true)
+    try {
+      await Promise.all(
+        learningModules.map((mod, i) =>
+          api.put(`/admin/learning-modules/${mod.id}`, { order: i })
+        )
+      )
+      showToast('Module order saved', 'success')
+      const res = await api.get('/admin/learnings')
+      setLearnings(res.data)
+    } catch {
+      showToast('Failed to save order', 'error')
+    } finally {
+      setSavingOrder(false)
+    }
   }
 
   const openEditEvent = (event: Event) => {

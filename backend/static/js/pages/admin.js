@@ -1,10 +1,10 @@
-import { api } from '../api.js';
+﻿import { api } from '../api.js';
 
 export async function render(el) {
   const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
   
-  // 1. Declare the variable here so it's available to your functions
   let activeTab = 'overview'; 
+
   if (!user.is_admin) {
     el.innerHTML = '<div class="empty-state">⛔ Admin access required.</div>';
     return;
@@ -69,104 +69,10 @@ export async function render(el) {
     draw();
   }
 
-  async function drawEvents(pane) {
-    let events = await api.get('/events/');
-    function renderForm(ev = null) {
-      const overlay = window._metis.openModal(`
-        <button class="modal-close" id="eclose">✕</button>
-        <h3 style="margin-bottom:16px">${ev ? 'Edit event' : 'New event'}</h3>
-        <div class="form-group"><label class="form-label">Title</label><input id="ev-title" class="form-input" value="${ev?.title ?? ''}"></div>
-        <div class="form-group"><label class="form-label">Description</label><textarea id="ev-desc" class="form-input" rows="3">${ev?.description ?? ''}</textarea></div>
-        <div class="form-group"><label class="form-label">Type</label>
-          <select id="ev-type" class="form-input form-select">
-            ${['news','lunch_and_learn','workshop','webinar','conference'].map(t =>
-              `<option ${ev?.event_type===t?'selected':''}>${t}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Date</label><input id="ev-date" class="form-input" value="${ev?.date ?? ''}"></div>
-        <div class="form-group"><label class="form-label">Location</label><input id="ev-loc" class="form-input" value="${ev?.location ?? ''}"></div>
-        <div class="form-group"><label class="form-label">URL</label><input id="ev-url" class="form-input" value="${ev?.url ?? ''}"></div>
-        <div style="text-align:right;margin-top:8px">
-          <button id="ev-save" class="btn btn-primary">Save</button>
-        </div>`);
-      overlay.querySelector('#eclose').onclick = () => overlay.remove();
-      overlay.querySelector('#ev-save').addEventListener('click', async () => {
-        const payload = {
-          title:       document.getElementById('ev-title').value,
-          description: document.getElementById('ev-desc').value,
-          event_type:  document.getElementById('ev-type').value,
-          date:        document.getElementById('ev-date').value,
-          location:    document.getElementById('ev-loc').value,
-          url:         document.getElementById('ev-url').value,
-        };
-        try {
-          if (ev) await api.put(`/admin/events/${ev.id}`, payload);
-          else    await api.post('/admin/events', payload);
-          window._metis.toast('Event saved', 'success');
-          overlay.remove();
-          events = await api.get('/events/');
-          drawEventList();
-        } catch(e) { window._metis.toast(e.message, 'error'); }
-      });
-    }
-    function drawEventList() {
-      pane.innerHTML = `
-        <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-          <span class="text-secondary text-sm">${events.length} events</span>
-          <div style="display:flex;gap:8px">
-            <button id="scrape-btn" class="btn btn-secondary btn-sm">🔄 Refresh from web</button>
-            <button id="new-event-btn" class="btn btn-primary btn-sm">+ New event</button>
-          </div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <table class="table">
-            <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Actions</th></tr></thead>
-            <tbody>
-              ${events.map(ev => `
-                <tr>
-                  <td>${ev.title}</td>
-                  <td>${ev.event_type ?? '—'}</td>
-                  <td>${ev.date ?? '—'}</td>
-                  <td style="display:flex;gap:6px">
-                    <button class="btn btn-secondary btn-sm edit-ev" data-id="${ev.id}">Edit</button>
-                    <button class="btn btn-danger btn-sm del-ev" data-id="${ev.id}">Delete</button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`;
-      pane.querySelector('#new-event-btn').onclick = () => renderForm();
-      pane.querySelector('#scrape-btn').addEventListener('click', async () => {
-        try {
-          await api.post('/admin/scrape-events', {});
-          window._metis.toast('Scraping events…', 'info');
-          events = await api.get('/events/');
-          drawEventList();
-        } catch(e) { window._metis.toast(e.message, 'error'); }
-      });
-      pane.querySelectorAll('.edit-ev').forEach(b =>
-        b.addEventListener('click', () => renderForm(events.find(e => e.id == b.dataset.id)))
-      );
-      pane.querySelectorAll('.del-ev').forEach(b =>
-        b.addEventListener('click', async () => {
-          if (!confirm('Delete event?')) return;
-          try {
-            await api.delete(`/admin/events/${b.dataset.id}`);
-            events = events.filter(e => e.id != b.dataset.id);
-            drawEventList();
-            window._metis.toast('Deleted', 'success');
-          } catch(e) { window._metis.toast(e.message, 'error'); }
-        })
-      );
-    }
-    drawEventList();
-  }
-
   async function drawLearnings(pane) {
     let learnings = await api.get('/admin/learnings');
     let q = '';
     const TYPES = ['article', 'video', 'course', 'tutorial', 'podcast', 'book', 'other'];
-
     function renderForm(lr = null) {
       const overlay = window._metis.openModal(`
         <button class="modal-close" id="lclose">✕</button>
@@ -208,7 +114,6 @@ export async function render(el) {
           <label class="form-label">Tags (comma-separated)</label>
           <input id="lr-tags" class="form-input" placeholder="AI, LLM, beginner" value="${lr?.tags ?? ''}">
         </div>
-      
         <div style="text-align:right;margin-top:8px">
           <button id="lr-save" class="btn btn-primary">Save</button>
         </div>`);
@@ -306,7 +211,6 @@ export async function render(el) {
       );
     }
 
-    // ── UPDATED MODULES MODAL WITH DRAG & DROP ───────────────────────────────
     async function renderModulesModal(learningId) {
       let modules;
       try {
@@ -315,7 +219,6 @@ export async function render(el) {
         window._metis.toast(e.message || 'Failed to load modules', 'error');
         return;
       }
-
       function moduleRows() {
         if (!modules.length) return `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px">No modules yet.</td></tr>`;
         return modules.map(m => `
@@ -330,7 +233,6 @@ export async function render(el) {
             </td>
           </tr>`).join('');
       }
-
       function renderOverlay() {
         const overlay = window._metis.openModal(`
           <button class="modal-close" id="mmod-close">✕</button>
@@ -348,8 +250,6 @@ export async function render(el) {
         `);
         
         overlay.querySelector('#mmod-close').onclick = () => overlay.remove();
-
-        // Standard Actions
         overlay.querySelectorAll('.edit-mod').forEach(btn =>
           btn.addEventListener('click', () => {
             overlay.remove();
@@ -370,10 +270,8 @@ export async function render(el) {
           })
         );
 
-        // --- Drag & Drop Logic for Rows ---
         const container = overlay.querySelector('#mod-tbody');
         let draggedItem = null;
-
         container.addEventListener('dragstart', e => {
             const target = e.target.closest('.draggable-module');
             if (target) {
@@ -381,7 +279,6 @@ export async function render(el) {
                 setTimeout(() => target.style.opacity = '0.4', 0);
             }
         });
-
         container.addEventListener('dragend', e => {
             const target = e.target.closest('.draggable-module');
             if (target) {
@@ -389,7 +286,6 @@ export async function render(el) {
                 draggedItem = null;
             }
         });
-
         container.addEventListener('dragover', e => {
             e.preventDefault();
             if (!draggedItem) return;
@@ -400,7 +296,6 @@ export async function render(el) {
                 container.insertBefore(draggedItem, afterElement);
             }
         });
-
         function getDragAfterElement(container, y) {
             const draggableElements = [...container.querySelectorAll('.draggable-module:not([style*="opacity: 0.4"])')];
             return draggableElements.reduce((closest, child) => {
@@ -414,12 +309,10 @@ export async function render(el) {
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
-        // --- Save Order Backend Trigger ---
         const saveOrderBtn = overlay.querySelector('#save-mod-order');
         saveOrderBtn.addEventListener('click', async () => {
             const newOrderIds = [...container.querySelectorAll('.draggable-module')].map(el => el.dataset.id);
-            if (!newOrderIds.length) return; // nothing to reorder
-
+            if (!newOrderIds.length) return;
             saveOrderBtn.disabled = true;
             saveOrderBtn.textContent = 'Saving...';
             try {
@@ -427,8 +320,6 @@ export async function render(el) {
                 window._metis.toast('Module order saved successfully', 'success');
                 saveOrderBtn.disabled = false;
                 saveOrderBtn.textContent = 'Save Order';
-                
-                // Keep local state in sync
                 modules.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
             } catch(e) {
                 window._metis.toast(e.message || 'Failed to save module order', 'error');
@@ -436,29 +327,26 @@ export async function render(el) {
                 saveOrderBtn.textContent = 'Save Order';
             }
         });
-
         return overlay;
       }
       renderOverlay();
     }
-    
     draw();
   }
 
-   async function drawWorkshops(pane) {
-    let workshops = await api.get('/admin/workshops');
+    async function drawWorkshops(pane) {
+    let workshops = await api.get('/admin/events?event_type=workshop');
     let q = '';
     
-    // Suggested formats based on typical workshop needs
     const FORMATS = ['in-person', 'online', 'hybrid', 'other'];
+
     function renderForm(ws = null) {
-      // Helper to format ISO datetime strings for <input type="datetime-local">
       const formatDate = (dateStr) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
-        // adjust to local timezone string expected by datetime-local input
         return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
       };
+
       const overlay = window._metis.openModal(`
         <button class="modal-close" id="wclose">✕</button>
         <h3 style="margin-bottom:16px">${ws ? 'Edit workshop' : 'New workshop'}</h3>
@@ -496,10 +384,12 @@ export async function render(el) {
             <label class="form-label">Duration (min)</label>
             <input id="ws-duration" class="form-input" type="number" min="1" value="${ws?.duration_minutes ?? ''}">
           </div>
+
           <div class="form-group">
             <label class="form-label">Start Date</label>
             <input id="ws-start" class="form-input" type="datetime-local" value="${formatDate(ws?.start_date)}">
           </div>
+
           <div class="form-group">
             <label class="form-label">End Date</label>
             <input id="ws-end" class="form-input" type="datetime-local" value="${formatDate(ws?.end_date)}">
@@ -509,20 +399,28 @@ export async function render(el) {
             <label class="form-label">Capacity</label>
             <input id="ws-capacity" class="form-input" type="number" min="1" value="${ws?.capacity ?? ''}">
           </div>
+
           <div class="form-group">
-            <label class="form-label">Points</label>
-            <input id="ws-points" class="form-input" type="number" min="0" value="${ws?.points ?? 0}">
+            <label class="form-label">XP Reward</label>
+            <input id="ws-points" class="form-input" type="number" min="0" value="${ws?.xp_reward ?? 0}">
           </div>
+
           <div class="form-group">
             <label class="form-label">Location</label>
             <input id="ws-location" class="form-input" placeholder="Room A / Zoom link" value="${ws?.location ?? ''}">
           </div>
+
           <div class="form-group">
             <label class="form-label">Organizer</label>
             <input id="ws-organizer" class="form-input" placeholder="e.g. John Doe" value="${ws?.organizer ?? ''}">
           </div>
         </div>
         
+        <div class="form-group">
+          <label class="form-label">URL (Registration/Info)</label>
+          <input id="ws-url" class="form-input" placeholder="https://..." value="${ws?.url ?? ''}">
+        </div>
+
         <div class="form-group">
           <label class="form-label">Tags (comma-separated)</label>
           <input id="ws-tags" class="form-input" placeholder="AI, leadership, beginner" value="${ws?.tags ?? ''}">
@@ -536,53 +434,56 @@ export async function render(el) {
         <div style="text-align:right;margin-top:16px">
           <button id="ws-save" class="btn btn-primary">Save</button>
         </div>`);
+
       overlay.querySelector('#wclose').onclick = () => overlay.remove();
       
       overlay.querySelector('#ws-save').addEventListener('click', async () => {
         const title = document.getElementById('ws-title').value.trim();
-        if (!title) { 
-          window._metis.toast('Title is required', 'error'); 
-          return; 
-        }
+        if (!title) { window._metis.toast('Title is required', 'error'); return; }
+
         const startVal = document.getElementById('ws-start').value;
         const endVal = document.getElementById('ws-end').value;
+
         const payload = {
+          event_type:       'workshop',
           title,
           description:      document.getElementById('ws-desc').value      || null,
           category:         document.getElementById('ws-category').value  || null,
           format:           document.getElementById('ws-format').value    || null,
           location:         document.getElementById('ws-location').value  || null,
           organizer:        document.getElementById('ws-organizer').value || null,
+          url:              document.getElementById('ws-url').value       || null,
           tags:             document.getElementById('ws-tags').value      || null,
           level:            parseInt(document.getElementById('ws-level').value)    || 1,
           duration_minutes: parseInt(document.getElementById('ws-duration').value) || null,
           capacity:         parseInt(document.getElementById('ws-capacity').value) || null,
-          points:           parseInt(document.getElementById('ws-points').value)   || 0,
+          xp_reward:        parseInt(document.getElementById('ws-points').value)   || 0,
+          is_active:        document.getElementById('ws-active').checked,
           start_date:       startVal ? new Date(startVal).toISOString() : null,
           end_date:         endVal ? new Date(endVal).toISOString() : null,
-          is_active:        document.getElementById('ws-active').checked,
         };
+
         try {
           if (ws) {
-            const updated = await api.put(`/admin/workshops/${ws.id}`, payload);
+            const updated = await api.put(`/admin/events/${ws.id}`, payload);
             workshops = workshops.map(w => w.id === ws.id ? updated : w);
           } else {
-            const created = await api.post('/admin/workshops', payload);
+            const created = await api.post('/admin/events', payload);
             workshops = [created, ...workshops];
           }
           overlay.remove();
           window._metis.toast('Saved', 'success');
           draw(); 
-        } catch(e) { 
-          window._metis.toast(e.message, 'error'); 
-        }
+        } catch(e) { window._metis.toast(e.message, 'error'); }
       });
     }
+
     function draw() {
       const filtered = workshops.filter(w =>
         w.is_active !== false &&
         (!q || w.title.toLowerCase().includes(q) || (w.category ?? '').toLowerCase().includes(q))
       );
+
       pane.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <input id="ws-search" class="form-input search-input" placeholder="Search by title or category…" value="${q}">
@@ -604,7 +505,6 @@ export async function render(el) {
             </thead>
             <tbody>
               ${filtered.length ? filtered.map(w => {
-                // Formatting dates nicely for the table view
                 const startStr = w.start_date ? new Date(w.start_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
                 return `
                 <tr>
@@ -617,7 +517,7 @@ export async function render(el) {
                   <td style="white-space:nowrap; font-size: 0.9em;">${startStr}</td>
                   <td>${w.duration_minutes ? `${w.duration_minutes} min` : '—'}</td>
                   <td>${w.capacity ? `${w.capacity} pax` : '—'}</td>
-                  <td>${w.points ?? 0}</td>
+                  <td>${w.xp_reward ?? 0}</td>
                   <td style="white-space:nowrap">
                     <button class="btn btn-secondary btn-sm edit-ws" data-id="${w.id}" style="margin-right:4px">Edit</button>
                     <button class="btn btn-danger btn-sm del-ws" data-id="${w.id}">Delete</button>
@@ -628,37 +528,248 @@ export async function render(el) {
           </table>
         </div>
         <div class="text-sm text-secondary" style="margin-top:10px">${filtered.length} workshop${filtered.length !== 1 ? 's' : ''}</div>`;
-      // Search Handler
+
       document.getElementById('ws-search').addEventListener('input', e => {
         q = e.target.value.toLowerCase();
         draw();
       });
-      // New Button Handler
+
       document.getElementById('new-ws-btn').onclick = () => renderForm();
-      // Edit Buttons Handler
+
       pane.querySelectorAll('.edit-ws').forEach(btn =>
         btn.addEventListener('click', () => {
           const ws = workshops.find(w => w.id === btn.dataset.id);
           if (ws) renderForm(ws);
         })
       );
-      // Delete/Deactivate Buttons Handler
+
       pane.querySelectorAll('.del-ws').forEach(btn =>
         btn.addEventListener('click', async () => {
           if (!confirm('Deactivate this workshop?')) return;
           try {
-            await api.delete(`/admin/workshops/${btn.dataset.id}`);
-            // Remove from local array to immediately reflect in UI
+            await api.delete(`/admin/events/${btn.dataset.id}`);
             workshops = workshops.filter(w => w.id !== btn.dataset.id);
             window._metis.toast('Workshop deactivated', 'success');
             draw();
-          } catch(e) { 
-            window._metis.toast(e.message, 'error'); 
-          }
+          } catch(e) { window._metis.toast(e.message, 'error'); }
         })
       );
     }
-    // Initial render
+
+    draw();
+  }
+
+
+  async function drawLaunches(pane) {
+    let lunches = await api.get('/admin/events?event_type=launch');
+    let q = '';
+    function renderForm(ln = null) {
+      const overlay = window._metis.openModal(`
+        <button class="modal-close" id="lnclose">✕</button>
+        <h3 style="margin-bottom:16px">${ln ? 'Edit Launch' : 'New Launch'}</h3>
+        <div class="form-group"><label class="form-label">Title *</label><input id="ln-title" class="form-input" value="${ln?.title ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea id="ln-desc" class="form-input" rows="3">${ln?.description ?? ''}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label class="form-label">Category</label><input id="ln-category" class="form-input" value="${ln?.category ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Speaker</label><input id="ln-speaker" class="form-input" value="${ln?.speaker ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Date</label><input id="ln-date" class="form-input" value="${ln?.event_date ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Time</label><input id="ln-time" class="form-input" value="${ln?.event_time ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Duration (min)</label><input id="ln-duration" class="form-input" type="number" value="${ln?.duration_minutes ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Capacity</label><input id="ln-capacity" class="form-input" type="number" value="${ln?.capacity ?? ''}"></div>
+          <div class="form-group"><label class="form-label">XP Reward</label><input id="ln-xp" class="form-input" type="number" value="${ln?.xp_reward ?? 0}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Location</label><input id="ln-location" class="form-input" value="${ln?.location ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Menu</label><input id="ln-menu" class="form-input" value="${ln?.menu ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Tags</label><input id="ln-tags" class="form-input" value="${ln?.tags ?? ''}"></div>
+        <div style="text-align:right;margin-top:16px"><button id="ln-save" class="btn btn-primary">Save</button></div>`);
+      overlay.querySelector('#lnclose').onclick = () => overlay.remove();
+      overlay.querySelector('#ln-save').addEventListener('click', async () => {
+        const title = document.getElementById('ln-title').value.trim();
+        if (!title) { window._metis.toast('Title is required', 'error'); return; }
+        const payload = {
+          event_type: 'launch',
+          title,
+          description: document.getElementById('ln-desc').value || null,
+          category: document.getElementById('ln-category').value || null,
+          speaker: document.getElementById('ln-speaker').value || null,
+          event_date: document.getElementById('ln-date').value || null,
+          event_time: document.getElementById('ln-time').value || null,
+          location: document.getElementById('ln-location').value || null,
+          menu: document.getElementById('ln-menu').value || null,
+          tags: document.getElementById('ln-tags').value || null,
+          duration_minutes: parseInt(document.getElementById('ln-duration').value) || null,
+          capacity: parseInt(document.getElementById('ln-capacity').value) || null,
+          xp_reward: parseInt(document.getElementById('ln-xp').value) || 0,
+        };
+        try {
+          if (ln) {
+            const updated = await api.put(`/admin/events/${ln.id}`, payload);
+            lunches = lunches.map(l => l.id === ln.id ? updated : l);
+          } else {
+            const created = await api.post('/admin/events', payload);
+            lunches = [created, ...lunches];
+          }
+          overlay.remove();
+          window._metis.toast('Saved', 'success');
+          draw();
+        } catch(e) { window._metis.toast(e.message, 'error'); }
+      });
+    }
+    function draw() {
+      const filtered = lunches.filter(l =>
+        l.is_active !== false &&
+        (!q || l.title.toLowerCase().includes(q) || (l.category ?? '').toLowerCase().includes(q))
+      );
+      pane.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <input id="ln-search" class="form-input search-input" placeholder="Search by title or category…" value="${q}">
+          <button id="new-ln-btn" class="btn btn-primary btn-sm">+ New Launch</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table class="table">
+            <thead><tr><th>Title</th><th>Category</th><th>Speaker</th><th>Date</th><th>Time</th><th>Location</th><th>XP</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${filtered.length ? filtered.map(l => `
+                <tr>
+                  <td style="font-weight:500">${l.title}</td>
+                  <td>${l.category ?? '—'}</td>
+                  <td>${l.speaker ?? '—'}</td>
+                  <td style="white-space:nowrap">${l.event_date ?? '—'}</td>
+                  <td style="white-space:nowrap">${l.event_time ?? '—'}</td>
+                  <td>${l.location ?? '—'}</td>
+                  <td>${l.xp_reward ?? 0}</td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-secondary btn-sm edit-ln" data-id="${l.id}" style="margin-right:4px">Edit</button>
+                    <button class="btn btn-danger btn-sm del-ln" data-id="${l.id}">Delete</button>
+                  </td>
+                </tr>`).join('')
+              : '<tr><td colspan="8" style="text-align:center;padding:40px">No sessions found.</td></tr>'}
+            </tbody>
+          </table>
+        </div>`;
+      document.getElementById('ln-search').addEventListener('input', e => { q = e.target.value.toLowerCase(); draw(); });
+      document.getElementById('new-ln-btn').onclick = () => renderForm();
+      pane.querySelectorAll('.edit-ln').forEach(btn => btn.addEventListener('click', () => renderForm(lunches.find(l => l.id === btn.dataset.id))));
+      pane.querySelectorAll('.del-ln').forEach(btn => btn.addEventListener('click', async () => {
+          if (!confirm('Deactivate this session?')) return;
+          try {
+            await api.delete(`/admin/events/${btn.dataset.id}`);
+            lunches = lunches.filter(l => l.id !== btn.dataset.id);
+            window._metis.toast('Session deactivated', 'success');
+            draw();
+          } catch(e) { window._metis.toast(e.message, 'error'); }
+        })
+      );
+    }
+    draw();
+  }
+
+  async function drawWebinars(pane) {
+    let webinars = await api.get('/admin/events?event_type=webinar');
+    let q = '';
+    const PLATFORMS = ['Zoom', 'Teams', 'YouTube Live', 'other'];
+    function renderForm(wb = null) {
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+      };
+      const overlay = window._metis.openModal(`
+        <button class="modal-close" id="wbclose">✕</button>
+        <h3 style="margin-bottom:16px">${wb ? 'Edit webinar' : 'New webinar'}</h3>
+        <div class="form-group"><label class="form-label">Title *</label><input id="wb-title" class="form-input" value="${wb?.title ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea id="wb-desc" class="form-input" rows="3">${wb?.description ?? ''}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label class="form-label">Category</label><input id="wb-category" class="form-input" value="${wb?.category ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Platform</label><select id="wb-platform" class="form-input form-select"><option value="">— select —</option>${PLATFORMS.map(p => `<option ${wb?.platform === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Speaker</label><input id="wb-speaker" class="form-input" value="${wb?.speaker ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Duration (min)</label><input id="wb-duration" class="form-input" type="number" value="${wb?.duration_minutes ?? ''}"></div>
+          <div class="form-group"><label class="form-label">Start Date & Time</label><input id="wb-start" class="form-input" type="datetime-local" value="${formatDate(wb?.start_date)}"></div>
+          <div class="form-group"><label class="form-label">Capacity</label><input id="wb-capacity" class="form-input" type="number" value="${wb?.capacity ?? ''}"></div>
+          <div class="form-group"><label class="form-label">XP Reward</label><input id="wb-xp" class="form-input" type="number" value="${wb?.xp_reward ?? 0}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Tags</label><input id="wb-tags" class="form-input" value="${wb?.tags ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Registration URL</label><input id="wb-url" class="form-input" value="${wb?.registration_url ?? ''}"></div>
+        <div style="text-align:right;margin-top:16px"><button id="wb-save" class="btn btn-primary">Save</button></div>`);
+      overlay.querySelector('#wbclose').onclick = () => overlay.remove();
+      overlay.querySelector('#wb-save').addEventListener('click', async () => {
+        const title = document.getElementById('wb-title').value.trim();
+        if (!title) { window._metis.toast('Title is required', 'error'); return; }
+        const startVal = document.getElementById('wb-start').value;
+        const payload = {
+          event_type: 'webinar',
+          title,
+          description: document.getElementById('wb-desc').value || null,
+          category: document.getElementById('wb-category').value || null,
+          platform: document.getElementById('wb-platform').value || null,
+          speaker: document.getElementById('wb-speaker').value || null,
+          tags: document.getElementById('wb-tags').value || null,
+          registration_url: document.getElementById('wb-url').value || null,
+          duration_minutes: parseInt(document.getElementById('wb-duration').value) || null,
+          capacity: parseInt(document.getElementById('wb-capacity').value) || null,
+          xp_reward: parseInt(document.getElementById('wb-xp').value) || 0,
+          start_date: startVal ? new Date(startVal).toISOString() : null,
+        };
+        try {
+          if (wb) {
+            const updated = await api.put(`/admin/events/${wb.id}`, payload);
+            webinars = webinars.map(w => w.id === wb.id ? updated : w);
+          } else {
+            const created = await api.post('/admin/events', payload);
+            webinars = [created, ...webinars];
+          }
+          overlay.remove();
+          window._metis.toast('Saved', 'success');
+          draw();
+        } catch(e) { window._metis.toast(e.message, 'error'); }
+      });
+    }
+    function draw() {
+      const filtered = webinars.filter(w =>
+        w.is_active !== false &&
+        (!q || w.title.toLowerCase().includes(q) || (w.category ?? '').toLowerCase().includes(q))
+      );
+      pane.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <input id="wb-search" class="form-input search-input" placeholder="Search by title or category…" value="${q}">
+          <button id="new-wb-btn" class="btn btn-primary btn-sm">+ New webinar</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table class="table">
+            <thead><tr><th>Title</th><th>Category</th><th>Speaker</th><th>Platform</th><th>Date</th><th>Duration</th><th>XP</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${filtered.length ? filtered.map(w => `
+                <tr>
+                  <td style="font-weight:500">${w.title}</td>
+                  <td>${w.category ?? '—'}</td>
+                  <td>${w.speaker ?? '—'}</td>
+                  <td>${w.platform ?? '—'}</td>
+                  <td style="white-space:nowrap">${w.start_date ? new Date(w.start_date).toLocaleDateString() : '—'}</td>
+                  <td>${w.duration_minutes ? `${w.duration_minutes} min` : '—'}</td>
+                  <td>${w.xp_reward ?? 0}</td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-secondary btn-sm edit-wb" data-id="${w.id}" style="margin-right:4px">Edit</button>
+                    <button class="btn btn-danger btn-sm del-wb" data-id="${w.id}">Delete</button>
+                  </td>
+                </tr>`).join('')
+              : '<tr><td colspan="8" style="text-align:center;padding:40px">No webinars found.</td></tr>'}
+            </tbody>
+          </table>
+        </div>`;
+      document.getElementById('wb-search').addEventListener('input', e => { q = e.target.value.toLowerCase(); draw(); });
+      document.getElementById('new-wb-btn').onclick = () => renderForm();
+      pane.querySelectorAll('.edit-wb').forEach(btn => btn.addEventListener('click', () => renderForm(webinars.find(w => w.id === btn.dataset.id))));
+      pane.querySelectorAll('.del-wb').forEach(btn => btn.addEventListener('click', async () => {
+          if (!confirm('Deactivate this webinar?')) return;
+          try {
+            await api.delete(`/admin/events/${btn.dataset.id}`);
+            webinars = webinars.filter(w => w.id !== btn.dataset.id);
+            window._metis.toast('Webinar deactivated', 'success');
+            draw();
+          } catch(e) { window._metis.toast(e.message, 'error'); }
+        })
+      );
+    }
     draw();
   }
 
@@ -666,12 +777,13 @@ export async function render(el) {
     <div class="tabs" id="admin-tabs">
       <button class="tab-btn active" data-tab="overview">Overview</button>
       <button class="tab-btn" data-tab="users">Users</button>
-      <button class="tab-btn" data-tab="events">Events</button>
       <button class="tab-btn" data-tab="learnings">Learnings</button>
+      <button class="tab-btn" data-tab="lunches">Launches</button>
       <button class="tab-btn" data-tab="workshops">Workshops</button>
+      <button class="tab-btn" data-tab="webinars">Webinars</button>
     </div>
     <div id="admin-pane"></div>`;
-    
+
   async function switchTab(tab) {
     activeTab = tab;
     document.querySelectorAll('#admin-tabs .tab-btn').forEach(b =>
@@ -681,11 +793,12 @@ export async function render(el) {
     pane.innerHTML = '<div class="loading">Loading…</div>';
     if (tab === 'overview')  await drawOverview(pane);
     if (tab === 'users')     await drawUsers(pane);
-    if (tab === 'events')    await drawEvents(pane);
     if (tab === 'learnings') await drawLearnings(pane);
+    if (tab === 'lunches')   await drawLaunches(pane);
     if (tab === 'workshops') await drawWorkshops(pane);
+    if (tab === 'webinars')  await drawWebinars(pane);
   }
-  
+
   document.getElementById('admin-tabs').addEventListener('click', e => {
     const btn = e.target.closest('.tab-btn');
     if (btn) switchTab(btn.dataset.tab);

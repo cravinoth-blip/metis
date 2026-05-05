@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text
+﻿from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -65,22 +65,28 @@ class ToolUsage(Base):
 
 class Event(Base):
     __tablename__ = "events"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    description = Column(Text, default="")
-    event_type = Column(String, default="webinar")
-    host = Column(String, default="")
-    event_date = Column(String, default="")
-    event_time = Column(String, default="")
-    location = Column(String, default="")
-    tags = Column(Text, default="[]")
+    description = Column(Text, nullable=True)
+    event_type = Column(String, nullable=False)
+    host = Column(String, nullable=True) # Ensure this exists if seeder uses it
+    event_date = Column(String, nullable=True)
+    event_time = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    tags = Column(String, nullable=True) # SQLite stores lists as strings
     xp_reward = Column(Integer, default=0)
     capacity = Column(Integer, default=0)
     registered_count = Column(Integer, default=0)
-    source_url = Column(String, default="")
+    source_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    duration_minutes = Column(Integer, nullable=True)
+    registration_url = Column(String, nullable=True)
+    speaker = Column(String, nullable=True)
+    organizer = Column(String, nullable=True)
+    format = Column(String, nullable=True)
+    platform = Column(String, nullable=True)
+    
     registrations = relationship("EventRegistration", back_populates="event")
 
 class EventRegistration(Base):
@@ -151,22 +157,33 @@ class CompletedUserModule(Base):
     user = relationship("User", back_populates="completed_learning_modules")
     module = relationship("LearningModule", back_populates="completions")
 
-class Workshop(Base):
-    __tablename__ = "workshops"
+class Activity(Base):
+    """Unified model for workshops, webinars, and launches."""
+    __tablename__ = "activities"
     id = Column(String, primary_key=True, index=True)
+    event_type = Column(String, nullable=False)       # "workshop" | "webinar" | "launch"
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     category = Column(String, nullable=True)
     level = Column(Integer, default=1)
     tags = Column(String, nullable=True)
+    # People
+    speaker = Column(String, nullable=True)           # presenter (webinars / launches)
+    organizer = Column(String, nullable=True)         # organizer (workshops)
+    # Scheduling
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
+    event_date = Column(String, nullable=True)        # display date string (launches)
+    event_time = Column(String, nullable=True)        # display time string (launches)
     duration_minutes = Column(Integer, nullable=True)
+    # Location / platform
     location = Column(String, nullable=True)
-    format = Column(String, nullable=True)
+    format = Column(String, nullable=True)            # in-person/online/hybrid (workshops)
+    platform = Column(String, nullable=True)          # Zoom/Teams/etc. (webinars)
+    # Registration
+    registration_url = Column(String, nullable=True)
     capacity = Column(Integer, nullable=True)
-    organizer = Column(String, nullable=True)
-    points = Column(Integer, default=0)
+    xp_reward = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

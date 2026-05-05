@@ -1,5 +1,4 @@
 import { api } from '../api.js';
-import { parseMarkdown } from '../markdown_parser.js'; // Imported Markdown Parser
 
 export async function render(el) {
     // --- 1. Dynamic URL Parsing ---
@@ -53,34 +52,50 @@ export async function render(el) {
         drawSections();
     }
 
-    // --- 4. Frontend Markdown Compiler (For Preview) ---
-    function generateMarkdownPreview(sections) {
-        let mdParts = [];
-        for (const s of sections) {
-            const t = (s.type || '').toLowerCase();
+    // --- 4. Section-to-HTML Renderer (mirrors markdown_parser.js styles) ---
+    function generateSectionsHTML(sections) {
+        const bold = (t) => t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        const HEADING  = 'margin:20px 0 8px;font-size:15px;font-weight:700;color:var(--text-main)';
+        const PARA     = 'margin-bottom:12px;color:var(--text-secondary)';
+        const CALLOUT  = 'background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px';
+
+        return sections.map(s => {
             const heading = (s.heading || '').trim();
-            const body = (s.body || '').trim();
-            const points = s.points || [];
+            const body    = (s.body    || '').trim();
+            const points  = (s.points  || []).filter(p => p.trim());
+            let html = '';
 
-            if (heading) mdParts.push(`### ${heading}`);
+            if (heading) html += `<h4 style="${HEADING}">${heading}</h4>`;
 
-            if (t === 'text' && body) {
-                mdParts.push(body);
-            } else if (t === 'key_points' && points.length) {
-                const bullets = points.filter(p => p.trim()).map(p => `- ${p}`).join('\n');
-                if (bullets) mdParts.push(bullets);
-            } else if (t === 'steps' && points.length) {
-                const steps = points.filter(p => p.trim()).map((p, i) => `${i+1}. ${p}`).join('\n');
-                if (steps) mdParts.push(steps);
-            } else if (t === 'tip' && body) {
-                mdParts.push(`> 💡 **Tip:** ${body}`);
-            } else if (t === 'warning' && body) {
-                mdParts.push(`> ⚠️ **Warning:** ${body}`);
-            } else if (t === 'example' && body) {
-                mdParts.push(`> 📝 **Example:** ${body}`);
+            switch (s.type) {
+                case 'text':
+                    if (body) html += `<p style="${PARA}">${bold(body)}</p>`;
+                    break;
+                case 'key_points':
+                    if (points.length) {
+                        const items = points.map(p =>
+                            `<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">${bold(p)}</li>`
+                        ).join('');
+                        html += `
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0;">
+                            <div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px;display:flex;align-items:center;gap:8px;">Key Points</div>
+                            <ul style="margin:0;color:#14532d;line-height:1.6;">${items}</ul>
+                        </div>`;
+                    }
+                    break;
+                case 'tip':
+                    if (body) html += `<div style="${CALLOUT}">💡 <strong>Tip:</strong> ${bold(body)}</div>`;
+                    break;
+                case 'warning':
+                    if (body) html += `<div style="${CALLOUT}">⚠️ <strong>Warning:</strong> ${bold(body)}</div>`;
+                    break;
+                case 'example':
+                    if (body) html += `<div style="${CALLOUT}">📝 <strong>Example:</strong> ${bold(body)}</div>`;
+                    break;
             }
-        }
-        return mdParts.join('\n\n').trim();
+            return html;
+        }).join('');
     }
 
     // --- 5. UI Renderer ---
@@ -257,8 +272,7 @@ export async function render(el) {
 
     // Preview Logic
     el.querySelector('#preview-module-btn').onclick = () => {
-        const rawMd = generateMarkdownPreview(moduleData.sections);
-        const htmlContent = parseMarkdown(rawMd);
+        const htmlContent = generateSectionsHTML(moduleData.sections);
         
         const overlay = window._metis.openModal(`
             <button class="modal-close" id="preview-close">✕</button>

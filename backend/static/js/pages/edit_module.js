@@ -33,6 +33,23 @@ export async function render(el) {
         }
     }
 
+    // Split any section that has a heading into a separate heading block + content block
+    function normalizeSections(raw) {
+        const out = [];
+        for (const s of raw) {
+            const h = (s.heading || '').trim();
+            if (h) {
+                out.push({ type: 'heading', heading: '', body: h, points: [] });
+                out.push({ ...s, heading: '' });
+            } else {
+                out.push(s);
+            }
+        }
+        return out;
+    }
+
+    sections = normalizeSections(sections);
+
     // --- 3. State ---
     let moduleData = {
         title:     existingModule.title      || '',
@@ -44,6 +61,7 @@ export async function render(el) {
     let dragStartIndex = null;
 
     const SECTION_TYPES = {
+        heading:    { label: 'Heading',    icon: '📌', color: '#1e40af', bg: '#dbeafe' },
         text:       { label: 'Text',       icon: '📝', color: '#64748b', bg: '#f1f5f9' },
         key_points: { label: 'Key Points', icon: '✨', color: '#15803d', bg: '#dcfce7' },
         tip:        { label: 'Tip',        icon: '💡', color: '#0369a1', bg: '#e0f2fe' },
@@ -60,21 +78,27 @@ export async function render(el) {
     function addPoint(si) { moduleData.sections[si].points.push(''); drawSections(); }
     function removePoint(si, pi) { moduleData.sections[si].points.splice(pi, 1); drawSections(); }
 
-    // --- 5. Markdown Preview ---
-    function generateMarkdownPreview(sections) {
-        let parts = [];
-        for (const s of sections) {
-            const t = (s.type || '').toLowerCase();
-            if (s.heading?.trim()) parts.push(`### ${s.heading.trim()}`);
-            if (t === 'text' && s.body?.trim())          parts.push(s.body.trim());
-            else if (t === 'key_points' && s.points?.length) {
-                const bullets = s.points.filter(p => p.trim()).map(p => `- ${p}`).join('\n');
-                if (bullets) parts.push(bullets);
-            } else if (t === 'tip' && s.body?.trim())     parts.push(`> 💡 **Tip:** ${s.body.trim()}`);
-            else if (t === 'warning' && s.body?.trim())   parts.push(`> ⚠️ **Warning:** ${s.body.trim()}`);
-            else if (t === 'example' && s.body?.trim())   parts.push(`> 📝 **Example:** ${s.body.trim()}`);
-        }
-        return parts.join('\n\n').trim();
+    // --- 5. Markdown Deparser (exact inverse of markdown_parser.js) ---
+    // heading  → ### text       (parser: /^### (.*$)/ → <h4>)
+    // text     → body           (parser: /\n\n/ → </p><p>)
+    // key_pts  → - item\n- item (parser: /(^- .*)+/ → green box)
+    // tip      → > 💡 **Tip:** …  (parser: /^>\s?/ → callout div)
+    // warning  → > ⚠️ **Warning:** …
+    // example  → > 📝 **Example:** …
+    function deparseToMarkdown(sections) {
+        return sections.map(s => {
+            const body   = (s.body   || '').trim();
+            const points = (s.points || []).filter(p => p.trim());
+            switch (s.type) {
+                case 'heading':    return body ? `### ${body}` : '';
+                case 'text':       return body;
+                case 'key_points': return points.map(p => `- ${p}`).join('\n');
+                case 'tip':        return body ? `> 💡 **Tip:** ${body}` : '';
+                case 'warning':    return body ? `> ⚠️ **Warning:** ${body}` : '';
+                case 'example':    return body ? `> 📝 **Example:** ${body}` : '';
+                default:           return body;
+            }
+        }).filter(Boolean).join('\n\n');
     }
 
     // --- 6. UI Renderer ---
@@ -88,7 +112,15 @@ export async function render(el) {
 
         container.innerHTML = moduleData.sections.map((sec, i) => {
             const config = SECTION_TYPES[sec.type] || SECTION_TYPES.text;
-            const contentHTML = sec.type === 'key_points' ? `
+
+            let contentHTML;
+            if (sec.type === 'heading') {
+                contentHTML = `
+                <div style="margin-top:12px;">
+                    <input type="text" class="form-input body-input" data-sec="${i}" value="${sec.body.replace(/"/g, '&quot;')}" placeholder="Heading text..." style="width:100%;font-size:15px;font-weight:700;">
+                </div>`;
+            } else if (sec.type === 'key_points') {
+                contentHTML = `
                 <div style="margin-top:12px;">
                     <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;display:block">Bullet Points</label>
                     <div style="display:flex;flex-direction:column;gap:8px">
@@ -99,11 +131,14 @@ export async function render(el) {
                             </div>`).join('')}
                     </div>
                     <button class="btn btn-secondary btn-sm add-pt-btn" data-sec="${i}" style="margin-top:12px">+ Add Point</button>
-                </div>` : `
+                </div>`;
+            } else {
+                contentHTML = `
                 <div style="margin-top:12px;">
                     <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">Body Content</label>
                     <textarea class="form-input body-input" data-sec="${i}" placeholder="Write your ${config.label.toLowerCase()} here..." style="width:100%;height:100px;resize:vertical">${sec.body.replace(/</g, '&lt;')}</textarea>
                 </div>`;
+            }
 
             return `
                 <div class="section-block" draggable="true" data-sec-idx="${i}" style="border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:border 0.2s;">
@@ -116,10 +151,6 @@ export async function render(el) {
                         </div>
                         <button class="rm-sec-btn" data-sec="${i}" style="background:none;border:none;color:#ef4444;cursor:pointer;font-weight:600;font-size:13px;">Remove</button>
                     </div>
-                    <div>
-                        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">Heading (Optional)</label>
-                        <input type="text" class="form-input heading-input" data-sec="${i}" value="${sec.heading.replace(/"/g, '&quot;')}" placeholder="Section Heading" style="width:100%">
-                    </div>
                     ${contentHTML}
                 </div>`;
         }).join('');
@@ -129,9 +160,6 @@ export async function render(el) {
 
     function attachListeners() {
         const container = el.querySelector('#sections-container');
-        container.querySelectorAll('.heading-input').forEach(inp => {
-            inp.oninput = (e) => { moduleData.sections[e.target.dataset.sec].heading = e.target.value; };
-        });
         container.querySelectorAll('.body-input').forEach(inp => {
             inp.oninput = (e) => { moduleData.sections[e.target.dataset.sec].body = e.target.value; };
         });
@@ -213,6 +241,7 @@ export async function render(el) {
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:12px;">
                 <span style="font-weight:600;font-size:14px;">Add Block:</span>
                 <select id="section-type-select" class="form-input" style="flex:1;max-width:200px;">
+                    <option value="heading">📌 Heading</option>
                     <option value="text">📝 Text</option>
                     <option value="key_points">✨ Key Points</option>
                     <option value="tip">💡 Tip</option>
@@ -234,7 +263,7 @@ export async function render(el) {
 
     // --- 9. Preview ---
     el.querySelector('#preview-btn').onclick = () => {
-        const html = parseMarkdown(generateMarkdownPreview(moduleData.sections));
+        const html = parseMarkdown(deparseToMarkdown(moduleData.sections));
         const overlay = window._metis.openModal(`
             <button class="modal-close" id="preview-close">✕</button>
             <div style="margin-bottom:24px;">

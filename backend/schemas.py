@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+﻿from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 
@@ -139,54 +139,78 @@ class LeaderboardEntry(BaseModel):
     is_current_user: bool = False
 
 
-# Event schemas
-class EventOut(BaseModel):
-    id: int
+# Event schem# ==============================================================================
+# Event Schemas
+# ==============================================================================
+
+class EventBase(BaseModel):
     title: str
-    description: str
-    event_type: str
-    host: str
-    event_date: str
-    event_time: str
-    location: str
-    tags: str
-    xp_reward: int
-    capacity: int
-    registered_count: int
-    source_url: str
-    is_active: bool
-    is_registered: bool = False
-
-    class Config:
-        from_attributes = True
-
-
-class EventCreate(BaseModel):
-    title: str
-    description: str = ""
-    event_type: str = "webinar"
-    host: str = ""
-    event_date: str = ""
-    event_time: str = ""
-    location: str = ""
+    description: Optional[str] = ""
+    event_type: str = "webinar"  # "news" | "launch" | "workshop" | "webinar"
+    category: Optional[str] = None
     tags: str = "[]"
+    
+    # People
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
+    host: Optional[str] = None
+
+    # Scheduling
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    event_date: Optional[str] = None
+    event_time: Optional[str] = None
+    duration_minutes: Optional[int] = None
+
+    # Logistics
+    location: Optional[str] = None
+    format: Optional[str] = None   # 'in-person', 'online', 'hybrid'
+    platform: Optional[str] = None # 'Zoom', 'Teams', 'YouTube'
+
+    # Links & Registration
+    url: Optional[str] = None
+    registration_url: Optional[str] = None
+
+    # Gamification & Limits
     xp_reward: int = 0
     capacity: int = 0
-    source_url: str = ""
 
+class EventCreate(EventBase):
+    pass
 
 class EventUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     event_type: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[str] = None
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
     host: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     event_date: Optional[str] = None
     event_time: Optional[str] = None
+    duration_minutes: Optional[int] = None
     location: Optional[str] = None
-    tags: Optional[str] = None
+    format: Optional[str] = None
+    platform: Optional[str] = None
+    url: Optional[str] = None
+    registration_url: Optional[str] = None
     xp_reward: Optional[int] = None
     capacity: Optional[int] = None
     is_active: Optional[bool] = None
+
+class EventOut(EventBase):
+    """Unified schema for sending Event data to the frontend."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str  # Changed to str to match UUID seeder
+    registered_count: int = 0
+    is_registered: bool = False # Populated by the router logic
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 # Admin schemas
@@ -337,65 +361,74 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-# Workshop schemas (public)
-class WorkshopOut(BaseModel):
+# Unified Activity schemas (workshop | webinar | launch)
+class ActivityOut(BaseModel):
     id: str
+    event_type: str
     title: str
     description: Optional[str] = None
     category: Optional[str] = None
     level: int = 1
     tags: Optional[str] = None
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    event_date: Optional[str] = None
+    event_time: Optional[str] = None
     duration_minutes: Optional[int] = None
     location: Optional[str] = None
     format: Optional[str] = None
+    platform: Optional[str] = None
+    menu: Optional[str] = None
+    registration_url: Optional[str] = None
     capacity: Optional[int] = None
-    organizer: Optional[str] = None
     xp_reward: int = 0
 
     class Config:
         from_attributes = True
 
-# Admin-only workshop schemas (includes timestamps and status)
-class WorkshopAdminOut(WorkshopOut):
-    is_active: bool = True
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-# Input schema for creating a workshop
-class WorkshopCreate(BaseModel):
+class ActivityCreate(BaseModel):
+    event_type: str
     title: str
     description: Optional[str] = None
     category: Optional[str] = None
     level: int = 1
     tags: Optional[str] = None
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    event_date: Optional[str] = None
+    event_time: Optional[str] = None
     duration_minutes: Optional[int] = None
     location: Optional[str] = None
     format: Optional[str] = None
+    platform: Optional[str] = None
+    menu: Optional[str] = None
+    registration_url: Optional[str] = None
     capacity: Optional[int] = None
-    organizer: Optional[str] = None
     xp_reward: int = 0
 
-# Input schema for updating a workshop
-class WorkshopUpdate(BaseModel):
+class ActivityUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
     level: Optional[int] = None
     tags: Optional[str] = None
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    event_date: Optional[str] = None
+    event_time: Optional[str] = None
     duration_minutes: Optional[int] = None
     location: Optional[str] = None
     format: Optional[str] = None
+    platform: Optional[str] = None
+    menu: Optional[str] = None
+    registration_url: Optional[str] = None
     capacity: Optional[int] = None
-    organizer: Optional[str] = None
     xp_reward: Optional[int] = None
     is_active: Optional[bool] = None
 

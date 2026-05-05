@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from datetime import datetime, timedelta
-from typing import Any, List
+from datetime import datetime, timezone
+from typing import Any, List, Optional
 import json
 import uuid
 from database import get_db
@@ -29,7 +29,7 @@ def get_platform_stats(
 ):
     total_users = db.query(models.User).filter(models.User.is_active == True).count()
 
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     active_today = db.query(models.User).filter(
         models.User.last_login >= today_start
     ).count()
@@ -88,7 +88,7 @@ def get_all_users(
 def update_user(
     user_id: int,
     update_data: schemas.AdminUserUpdate,
-    admin=Depends(get_current_admin),
+    _=Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -177,7 +177,7 @@ def create_event(
         **event_data.model_dump(),
         is_active=True,
         registered_count=0,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(event)
     db.commit()
@@ -190,7 +190,7 @@ def create_event(
 
 @router.put("/events/{event_id}")
 def update_event(
-    event_id: int,
+    event_id: str,  # <--- Change this from int to str
     update_data: schemas.EventUpdate,
     _=Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -201,21 +201,20 @@ def update_event(
 
     for field, value in update_data.model_dump(exclude_none=True).items():
         setattr(event, field, value)
-
+        
     db.commit()
     return {"message": "Event updated"}
 
-
 @router.delete("/events/{event_id}")
 def delete_event(
-    event_id: int,
+    event_id: str,  # <--- Change this from int to str
     _=Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-
+        
     event.is_active = False
     db.commit()
     return {"message": "Event deleted"}
@@ -235,7 +234,7 @@ async def trigger_scrape(
         added = 0
         for evt_data in events:
             if evt_data["event_type"] == "news":
-                event = models.Event(**evt_data, is_active=True, created_at=datetime.utcnow())
+                event = models.Event(**evt_data, is_active=True, created_at=datetime.now(timezone.utc))
                 db.add(event)
                 added += 1
             else:
@@ -243,7 +242,7 @@ async def trigger_scrape(
                     models.Event.title == evt_data["title"]
                 ).first()
                 if not existing:
-                    event = models.Event(**evt_data, is_active=True, created_at=datetime.utcnow())
+                    event = models.Event(**evt_data, is_active=True, created_at=datetime.now(timezone.utc))
                     db.add(event)
                     added += 1
 
@@ -282,8 +281,8 @@ def create_learning(
         id=str(uuid.uuid4()),
         **data.model_dump(),
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db.add(learning)
     db.commit()
@@ -303,7 +302,7 @@ def update_learning(
         raise HTTPException(status_code=404, detail="Learning not found")
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(learning, field, value)
-    learning.updated_at = datetime.utcnow()
+    learning.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(learning)
     return learning
@@ -319,80 +318,9 @@ def delete_learning(
     if not learning:
         raise HTTPException(status_code=404, detail="Learning not found")
     learning.is_active = False
-    learning.updated_at = datetime.utcnow()
+    learning.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Learning deactivated"}
-
-@router.get("/workshops", response_model=list[schemas.WorkshopOut])
-def list_workshops(
-    _=Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    # Retrieve all workshops, ordered by most recent creation
-    workshops = (
-        db.query(models.Workshop)
-        .order_by(models.Workshop.created_at.desc())
-        .all()
-    )
-    return workshops
-
-@router.post("/workshops", response_model=schemas.WorkshopOut, status_code=201)
-def create_workshop(
-    data: schemas.WorkshopCreate,
-    _=Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    workshop = models.Workshop(
-        id=str(uuid.uuid4()),
-        **data.model_dump(),
-        is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-    )
-    db.add(workshop)
-    db.commit()
-    db.refresh(workshop)
-    return workshop
-
-@router.put("/workshops/{workshop_id}", response_model=schemas.WorkshopOut)
-def update_workshop(
-    workshop_id: str,
-    data: schemas.WorkshopUpdate,
-    _=Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    workshop = db.query(models.Workshop).filter(models.Workshop.id == workshop_id).first()
-    
-    if not workshop:
-        raise HTTPException(status_code=404, detail="Workshop not found")
-    
-    # Update fields provided in the request
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(workshop, field, value)
-    
-    workshop.updated_at = datetime.utcnow()
-    
-    db.commit()
-    db.refresh(workshop)
-    return workshop
-
-@router.delete("/workshops/{workshop_id}")
-def delete_workshop(
-    workshop_id: str,
-    _=Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    workshop = db.query(models.Workshop).filter(models.Workshop.id == workshop_id).first()
-    
-    if not workshop:
-        raise HTTPException(status_code=404, detail="Workshop not found")
-    
-    # Soft delete: set is_active to False
-    workshop.is_active = False
-    workshop.updated_at = datetime.utcnow()
-    
-    db.commit()
-    return {"message": "Workshop deactivated"}
 
 
 @router.get("/tool-usage")
@@ -428,8 +356,10 @@ def list_learning_modules(
 ):
     modules = (
         db.query(models.LearningModule)
-        .filter(models.LearningModule.learning_id == learning_id)
-        # Optional: .filter(models.LearningModule.is_active == True) if you only want active ones
+        .filter(
+            models.LearningModule.learning_id == learning_id,
+            models.LearningModule.is_active == True,
+        )
         .order_by(models.LearningModule.order.asc())
         .all()
     )
@@ -457,8 +387,8 @@ def create_learning_module(
         learning_id=learning_id,
         **dump_data,
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     
     db.add(module)
@@ -492,8 +422,8 @@ def build_learning_module(
         duration_min=data.duration or None,
         xp_reward=data.xp_reward,
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db.add(module)
     db.commit()
@@ -527,7 +457,7 @@ def update_learning_module(
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(module, field, value)
         
-    module.updated_at = datetime.utcnow()
+    module.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(module)
@@ -546,7 +476,7 @@ def delete_learning_module(
 
     # Soft delete
     module.is_active = False
-    module.updated_at = datetime.utcnow()
+    module.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     return {"message": "Learning module deactivated"}
@@ -640,8 +570,8 @@ def build_learning_module(
         duration_min=data.duration,
         xp_reward=data.xp_reward,
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     
     db.add(module)
@@ -649,3 +579,23 @@ def build_learning_module(
     db.refresh(module)
     
     return module
+
+@router.get("/events", response_model=List[schemas.EventOut])
+def get_events(
+    event_type: Optional[str] = None,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get events, optionally filtered by event_type.
+    Handles calls like GET /admin/events?event_type=workshop
+    """
+    query = db.query(models.Event)
+    
+    if event_type:
+        query = query.filter(models.Event.event_type == event_type)
+        
+    # Ordering by created_at descending, but you can also order by start_date
+    events = query.order_by(models.Event.created_at.desc()).all()
+    
+    return events

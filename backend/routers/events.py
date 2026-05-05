@@ -1,7 +1,10 @@
+﻿# In your event router file
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import desc, asc
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from database import get_db
 import models
 import schemas
@@ -9,57 +12,70 @@ from auth import get_current_user, calculate_level, verify_token
 
 router = APIRouter(tags=["events"])
 
-
 def _get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optional[models.User]:
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    """Safely gets the current user from a token if present, otherwise returns None."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         return None
-    token = auth[7:]
-    payload = verify_token(token)
-    if not payload:
+    token = auth_header[7:]
+    
+    try:
+        payload = verify_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        return db.query(models.User).filter(models.User.id == int(user_id), models.User.is_active == True).first()
+    except Exception:
+        # Catches expired tokens or validation errors without crashing
         return None
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-    return db.query(models.User).filter(models.User.id == int(user_id), models.User.is_active == True).first()
 
-
-@router.get("/", response_model=list[schemas.EventOut])
-def list_events(
-    event_type: Optional[str] = Query(None),
+@router.get("/", response_model=List[schemas.EventOut])
+def list_all_events(
+    event_type: Optional[str] = Query(None, description="Filter by event type (e.g., 'workshop', 'news')."),
     current_user: Optional[models.User] = Depends(_get_optional_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Fetches all active events (workshops, webinars, news, etc.).
+    If a user is authenticated, it will also indicate which events they are registered for.
+    """
+    # Base query for all active events
     query = db.query(models.Event).filter(models.Event.is_active == True)
 
-    if event_type and event_type != "all":
+    # Apply event_type filter if provided
+    if event_type and event_type.lower() != "all":
         query = query.filter(models.Event.event_type == event_type)
+        
+    # Enhanced sorting: upcoming events first, then by creation date
+    events = query.order_by(
+        desc(models.Event.event_date), 
+        desc(models.Event.created_at)
+    ).all()
 
-    events = query.order_by(models.Event.created_at.desc()).all()
-
+    # Get user's registrations in a single query for efficiency
     user_reg_ids: set[int] = set()
     if current_user:
-        user_reg_ids = {
-            reg.event_id for reg in db.query(models.EventRegistration).filter(
-                models.EventRegistration.user_id == current_user.id
-            ).all()
-        }
+        registrations = db.query(models.EventRegistration.event_id).filter(
+            models.EventRegistration.user_id == current_user.id
+        ).all()
+        user_reg_ids = {reg.event_id for reg in registrations}
 
+    # Prepare the output
     result = []
     for event in events:
-        evt_out = schemas.EventOut.model_validate(event)
+        evt_out = schemas.EventOut.from_orm(event)
         evt_out.is_registered = event.id in user_reg_ids
         result.append(evt_out)
-
+        
     return result
 
-
-@router.post("/{event_id}/register")
+@router.post("/{event_id}/register", status_code=200)
 def register_for_event(
     event_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Register the current user for a specific event."""
     event = db.query(models.Event).filter(
         models.Event.id == event_id,
         models.Event.is_active == True
@@ -67,6 +83,9 @@ def register_for_event(
 
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+        
+    if event.registration_url is None:
+        raise HTTPException(status_code=400, detail="This event does not support direct registration.")
 
     # Check already registered
     existing = db.query(models.EventRegistration).filter(
@@ -75,44 +94,36 @@ def register_for_event(
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="Already registered for this event")
+        return {"message": "Already registered for this event"}
 
     # Check capacity
-    if event.capacity > 0 and event.registered_count >= event.capacity:
-        raise HTTPException(status_code=400, detail="Event is full")
+    if event.capacity is not None and event.registered_count >= event.capacity:
+        raise HTTPException(status_code=400, detail="This event is full")
 
-    # Register
-    reg = models.EventRegistration(
-        user_id=current_user.id,
-        event_id=event_id,
-        registered_at=datetime.utcnow()
-    )
+    # Create registration and update count
+    reg = models.EventRegistration(user_id=current_user.id, event_id=event_id)
     db.add(reg)
-
-    # Update event count
     event.registered_count += 1
-
-    # Award XP (10% of event XP reward)
+    
+    # Award XP for registering
     xp_earned = max(1, int(event.xp_reward * 0.1)) if event.xp_reward > 0 else 5
     current_user.xp += xp_earned
-    level, _ = calculate_level(current_user.xp)
-    current_user.level = level
+    current_user.level, _ = calculate_level(current_user.xp)
 
     db.commit()
-
     return {
-        "message": f"Registered for {event.title}! +{xp_earned} XP",
+        "message": f"Successfully registered for {event.title}! +{xp_earned} XP",
         "xp_earned": xp_earned,
         "new_xp": current_user.xp
     }
 
-
-@router.delete("/{event_id}/register")
+@router.delete("/{event_id}/register", status_code=200)
 def unregister_from_event(
     event_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Unregister the current user from a specific event."""
     reg = db.query(models.EventRegistration).filter(
         models.EventRegistration.user_id == current_user.id,
         models.EventRegistration.event_id == event_id
@@ -121,11 +132,117 @@ def unregister_from_event(
     if not reg:
         raise HTTPException(status_code=404, detail="Registration not found")
 
+    # Decrement event count if the event still exists
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if event and event.registered_count > 0:
         event.registered_count -= 1
 
     db.delete(reg)
     db.commit()
+    return {"message": "Successfully unregistered from the event"}
 
-    return {"message": "Unregistered from event"}
+
+
+@router.get("/ai-news")
+async def get_ai_news():
+    # This is a mock response; you can eventually pull this from your DB or an RSS feed
+    return [
+         {
+        "title": "EU AI Act Obligations Now Apply to General-Purpose AI Models",
+        "description": "The EU AI Act's rules on General-Purpose AI (GPAI) systems — including GPT-4 and Claude — took effect in August 2025, requiring providers to maintain technical documentation, comply with copyright law, and publish model summaries. Downstream deployers in pharma must ensure their AI tool providers are compliant.",
+        "event_type": "news",
+        "host": "European Commission",
+        "event_date": "August 2025",
+        "event_time": "",
+        "location": "",
+        "tags": '["EU AI Act", "Regulatory", "Compliance"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+    },
+    {
+        "title": "FDA Finalises Guidance on AI-Assisted Drug Manufacturing",
+        "description": "The FDA released final guidance on the use of AI and ML in pharmaceutical manufacturing processes, covering process validation, model lifecycle management, and data integrity requirements under 21 CFR Part 11. CROs supporting manufacturing clients must review their AI workflows.",
+        "event_type": "news",
+        "host": "U.S. Food & Drug Administration",
+        "event_date": "January 2026",
+        "event_time": "",
+        "location": "",
+        "tags": '["FDA", "Regulatory", "Manufacturing", "Compliance"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://www.fda.gov/science-research/artificial-intelligence-and-machine-learning-aiml-drug-development",
+    },
+    {
+        "title": "Anthropic Releases Claude 3.7 with Extended Thinking",
+        "description": "Anthropic launched Claude 3.7 Sonnet, featuring extended thinking mode that allows the model to reason through complex problems step-by-step before responding. Benchmarks show significant improvements on multi-step reasoning tasks relevant to clinical data analysis and protocol review.",
+        "event_type": "news",
+        "host": "Anthropic",
+        "event_date": "February 2025",
+        "event_time": "",
+        "location": "",
+        "tags": '["Claude", "Anthropic", "New Model"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://www.anthropic.com/news",
+    },
+    {
+        "title": "OpenAI o3 Achieves Expert-Level Performance on Medical Benchmarks",
+        "description": "OpenAI's o3 reasoning model scored at or above board-certified physician level on USMLE and MedQA benchmarks, marking a milestone for AI in clinical decision support. However, researchers caution that benchmark performance does not equate to clinical safety or reliability in real-world deployment.",
+        "event_type": "news",
+        "host": "OpenAI",
+        "event_date": "December 2024",
+        "event_time": "",
+        "location": "",
+        "tags": '["OpenAI", "Clinical AI", "Research"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://openai.com/research",
+    },
+    {
+        "title": "EMA Publishes Reflection Paper on AI in Medicines Development",
+        "description": "The European Medicines Agency published its reflection paper on the use of AI throughout the medicines development lifecycle — from target identification to pharmacovigilance. The paper outlines EMA's expectations for transparency, validation, and human oversight of AI tools used in regulatory submissions.",
+        "event_type": "news",
+        "host": "European Medicines Agency",
+        "event_date": "March 2025",
+        "event_time": "",
+        "location": "",
+        "tags": '["EMA", "Regulatory", "Pharma"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://www.ema.europa.eu/en/human-regulatory/research-development/data-analysis/artificial-intelligence-ai",
+    },
+    {
+        "title": "Nature Medicine: AI Model Matches Oncologist Accuracy on Trial Eligibility",
+        "description": "A Nature Medicine study demonstrated that a fine-tuned LLM could screen patient records against Phase III oncology trial eligibility criteria with accuracy matching expert oncologists at 91.3%, while screening 47× faster. The model flagged uncertainty in ambiguous cases for human review.",
+        "event_type": "news",
+        "host": "Nature Medicine",
+        "event_date": "November 2024",
+        "event_time": "",
+        "location": "",
+        "tags": '["Research", "Clinical Trials", "Oncology"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://www.nature.com/nm",
+    },
+    {
+        "title": "Microsoft Copilot for Clinical Documentation Enters General Availability",
+        "description": "Microsoft announced general availability of Copilot for healthcare, integrated with Epic EHR and Microsoft 365. The tool assists with clinical note drafting, patient communication, and prior authorisation letters. HIPAA BAA included. Pharma companies using Azure can now deploy within existing enterprise agreements.",
+        "event_type": "news",
+        "host": "Microsoft Health & Life Sciences",
+        "event_date": "October 2024",
+        "event_time": "",
+        "location": "",
+        "tags": '["Microsoft", "Copilot", "EHR", "Enterprise"]',
+        "xp_reward": 0,
+        "capacity": 0,
+        "registered_count": 0,
+        "source_url": "https://www.microsoft.com/en-us/industry/health/microsoft-cloud-for-healthcare",
+    }
+    ]
