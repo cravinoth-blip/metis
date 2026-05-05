@@ -95,13 +95,20 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if update_data.full_name is not None:
+        user.full_name = update_data.full_name
+
+    if update_data.email is not None:
+        user.email = update_data.email
+
     if update_data.is_admin is not None:
         user.is_admin = update_data.is_admin
 
     if update_data.xp is not None:
         user.xp = max(0, update_data.xp)
-        level, _ = calculate_level(user.xp)
-        user.level = level
+
+    if update_data.level is not None:
+        user.level = max(1, update_data.level)
 
     if update_data.is_active is not None:
         user.is_active = update_data.is_active
@@ -110,7 +117,22 @@ def update_user(
         user.department = update_data.department
 
     db.commit()
-    return {"message": "User updated successfully", "user_id": user_id}
+    db.refresh(user)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "full_name": user.full_name,
+        "department": user.department,
+        "avatar_initials": user.avatar_initials,
+        "is_admin": user.is_admin,
+        "is_active": user.is_active,
+        "xp": user.xp,
+        "level": user.level,
+        "streak": user.streak,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+    }
 
 
 @router.delete("/users/{user_id}")

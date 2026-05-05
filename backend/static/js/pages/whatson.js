@@ -57,7 +57,7 @@ function renderCard(ev) {
 
   const person   = ev.organizer || ev.speaker || ev.host;
   const link     = ev.registration_url || ev.url;
-  const linkText = ev.registration_url ? 'Register →' : 'View →';
+  const linkText = ev.registration_url ? 'Access link →' : 'View →';
 
   return `
     <div class="event-card">

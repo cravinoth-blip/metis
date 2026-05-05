@@ -47,8 +47,11 @@ class UserUpdate(BaseModel):
 
 
 class AdminUserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
     is_admin: Optional[bool] = None
     xp: Optional[int] = None
+    level: Optional[int] = None
     is_active: Optional[bool] = None
     department: Optional[str] = None
 

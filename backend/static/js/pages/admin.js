@@ -4,7 +4,6 @@ export async function render(el) {
   const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
   
   let activeTab = 'overview'; 
-
   if (!user.is_admin) {
     el.innerHTML = '<div class="empty-state">⛔ Admin access required.</div>';
     return;
@@ -24,12 +23,89 @@ export async function render(el) {
   async function drawUsers(pane) {
     let users = await api.get('/admin/users');
     let q = '';
+
+    function renderUserForm(u = null) {
+      const overlay = window._metis.openModal(`
+        <button class="modal-close" id="uclose">✕</button>
+        <h3 style="margin-bottom:16px">${u ? 'Edit User' : 'New User'}</h3>
+        
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input id="u-name" class="form-input" value="${u?.full_name ?? ''}">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input id="u-email" class="form-input" type="email" value="${u?.email ?? ''}">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <input id="u-dept" class="form-input" placeholder="e.g. Engineering" value="${u?.department ?? ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Level</label>
+            <input id="u-level" class="form-input" type="number" value="${u?.level ?? 1}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Experience Points (XP)</label>
+            <input id="u-xp" class="form-input" type="number" value="${u?.xp ?? 0}">
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:25px">
+            <input id="u-admin" type="checkbox" ${u?.is_admin ? 'checked' : ''} style="width:auto">
+            <label for="u-admin" class="form-label" style="margin:0">Admin Access</label>
+          </div>
+        </div>
+
+        <div style="text-align:right;margin-top:16px">
+          <button id="u-save" class="btn btn-primary">Save User</button>
+        </div>`);
+
+      overlay.querySelector('#uclose').onclick = () => overlay.remove();
+
+      overlay.querySelector('#u-save').addEventListener('click', async () => {
+        const full_name = document.getElementById('u-name').value.trim();
+        const email = document.getElementById('u-email').value.trim();
+        
+        if (!full_name || !email) { 
+          window._metis.toast('Name and Email are required', 'error'); 
+          return; 
+        }
+
+        const payload = {
+          full_name,
+          email,
+          department: document.getElementById('u-dept').value || null,
+          level: parseInt(document.getElementById('u-level').value) || 0,
+          xp: parseInt(document.getElementById('u-xp').value) || 0,
+          is_admin: document.getElementById('u-admin').checked,
+        };
+
+        try {
+          if (u) {
+            const updated = await api.put(`/admin/users/${u.id}`, payload);
+            users = users.map(user => user.id === u.id ? updated : user);
+          } else {
+            const created = await api.post('/admin/users', payload);
+            users = [created, ...users];
+          }
+          overlay.remove();
+          window._metis.toast('User saved successfully', 'success');
+          draw();
+        } catch (e) { 
+          window._metis.toast(e.message, 'error'); 
+        }
+      });
+    }
+
     function draw() {
       const filtered = users.filter(u =>
         !q || u.email.includes(q) || (u.full_name ?? '').toLowerCase().includes(q)
       );
+
       pane.innerHTML = `
-        <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <input id="user-search" class="form-input search-input" placeholder="Search users…" value="${q}">
         </div>
         <div class="card" style="padding:0;overflow:hidden">
@@ -46,14 +122,26 @@ export async function render(el) {
                   <td>${u.xp ?? 0}</td>
                   <td>${u.level ?? 0}</td>
                   <td>${u.is_admin ? '✓' : ''}</td>
-                  <td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-secondary btn-sm edit-user" data-id="${u.id}" style="margin-right:4px">Edit</button>
                     <button class="btn btn-danger btn-sm del-user" data-id="${u.id}">Delete</button>
                   </td>
                 </tr>`).join('')}
             </tbody>
           </table>
         </div>`;
-      document.getElementById('user-search')?.addEventListener('input', e => { q = e.target.value.toLowerCase(); draw(); });
+
+      document.getElementById('user-search')?.addEventListener('input', e => { 
+        q = e.target.value.toLowerCase(); 
+        draw(); 
+      });
+
+      document.getElementById('new-user-btn').onclick = () => renderUserForm();
+
+      pane.querySelectorAll('.edit-user').forEach(btn =>
+        btn.addEventListener('click', () => renderUserForm(users.find(u => u.id == btn.dataset.id)))
+      );
+
       pane.querySelectorAll('.del-user').forEach(btn =>
         btn.addEventListener('click', async () => {
           if (!confirm('Delete this user?')) return;
@@ -210,7 +298,6 @@ export async function render(el) {
         btn.addEventListener('click', () => window._metis.navigate(`/add-module?learning_id=${btn.dataset.id}`))
       );
     }
-
     async function renderModulesModal(learningId) {
       let modules;
       try {
@@ -269,7 +356,6 @@ export async function render(el) {
             } catch(e) { window._metis.toast(e.message, 'error'); }
           })
         );
-
         const container = overlay.querySelector('#mod-tbody');
         let draggedItem = null;
         container.addEventListener('dragstart', e => {
@@ -308,7 +394,6 @@ export async function render(el) {
                 }
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
-
         const saveOrderBtn = overlay.querySelector('#save-mod-order');
         saveOrderBtn.addEventListener('click', async () => {
             const newOrderIds = [...container.querySelectorAll('.draggable-module')].map(el => el.dataset.id);
@@ -339,14 +424,12 @@ export async function render(el) {
     let q = '';
     
     const FORMATS = ['in-person', 'online', 'hybrid', 'other'];
-
     function renderForm(ws = null) {
       const formatDate = (dateStr) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
         return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
       };
-
       const overlay = window._metis.openModal(`
         <button class="modal-close" id="wclose">✕</button>
         <h3 style="margin-bottom:16px">${ws ? 'Edit workshop' : 'New workshop'}</h3>
@@ -384,12 +467,10 @@ export async function render(el) {
             <label class="form-label">Duration (min)</label>
             <input id="ws-duration" class="form-input" type="number" min="1" value="${ws?.duration_minutes ?? ''}">
           </div>
-
           <div class="form-group">
             <label class="form-label">Start Date</label>
             <input id="ws-start" class="form-input" type="datetime-local" value="${formatDate(ws?.start_date)}">
           </div>
-
           <div class="form-group">
             <label class="form-label">End Date</label>
             <input id="ws-end" class="form-input" type="datetime-local" value="${formatDate(ws?.end_date)}">
@@ -399,17 +480,14 @@ export async function render(el) {
             <label class="form-label">Capacity</label>
             <input id="ws-capacity" class="form-input" type="number" min="1" value="${ws?.capacity ?? ''}">
           </div>
-
           <div class="form-group">
             <label class="form-label">XP Reward</label>
             <input id="ws-points" class="form-input" type="number" min="0" value="${ws?.xp_reward ?? 0}">
           </div>
-
           <div class="form-group">
             <label class="form-label">Location</label>
             <input id="ws-location" class="form-input" placeholder="Room A / Zoom link" value="${ws?.location ?? ''}">
           </div>
-
           <div class="form-group">
             <label class="form-label">Organizer</label>
             <input id="ws-organizer" class="form-input" placeholder="e.g. John Doe" value="${ws?.organizer ?? ''}">
@@ -420,7 +498,6 @@ export async function render(el) {
           <label class="form-label">URL (Registration/Info)</label>
           <input id="ws-url" class="form-input" placeholder="https://..." value="${ws?.url ?? ''}">
         </div>
-
         <div class="form-group">
           <label class="form-label">Tags (comma-separated)</label>
           <input id="ws-tags" class="form-input" placeholder="AI, leadership, beginner" value="${ws?.tags ?? ''}">
@@ -434,16 +511,13 @@ export async function render(el) {
         <div style="text-align:right;margin-top:16px">
           <button id="ws-save" class="btn btn-primary">Save</button>
         </div>`);
-
       overlay.querySelector('#wclose').onclick = () => overlay.remove();
       
       overlay.querySelector('#ws-save').addEventListener('click', async () => {
         const title = document.getElementById('ws-title').value.trim();
         if (!title) { window._metis.toast('Title is required', 'error'); return; }
-
         const startVal = document.getElementById('ws-start').value;
         const endVal = document.getElementById('ws-end').value;
-
         const payload = {
           event_type:       'workshop',
           title,
@@ -462,7 +536,6 @@ export async function render(el) {
           start_date:       startVal ? new Date(startVal).toISOString() : null,
           end_date:         endVal ? new Date(endVal).toISOString() : null,
         };
-
         try {
           if (ws) {
             const updated = await api.put(`/admin/events/${ws.id}`, payload);
@@ -477,13 +550,11 @@ export async function render(el) {
         } catch(e) { window._metis.toast(e.message, 'error'); }
       });
     }
-
     function draw() {
       const filtered = workshops.filter(w =>
         w.is_active !== false &&
         (!q || w.title.toLowerCase().includes(q) || (w.category ?? '').toLowerCase().includes(q))
       );
-
       pane.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <input id="ws-search" class="form-input search-input" placeholder="Search by title or category…" value="${q}">
@@ -528,21 +599,17 @@ export async function render(el) {
           </table>
         </div>
         <div class="text-sm text-secondary" style="margin-top:10px">${filtered.length} workshop${filtered.length !== 1 ? 's' : ''}</div>`;
-
       document.getElementById('ws-search').addEventListener('input', e => {
         q = e.target.value.toLowerCase();
         draw();
       });
-
       document.getElementById('new-ws-btn').onclick = () => renderForm();
-
       pane.querySelectorAll('.edit-ws').forEach(btn =>
         btn.addEventListener('click', () => {
           const ws = workshops.find(w => w.id === btn.dataset.id);
           if (ws) renderForm(ws);
         })
       );
-
       pane.querySelectorAll('.del-ws').forEach(btn =>
         btn.addEventListener('click', async () => {
           if (!confirm('Deactivate this workshop?')) return;
@@ -555,10 +622,8 @@ export async function render(el) {
         })
       );
     }
-
     draw();
   }
-
 
   async function drawLaunches(pane) {
     let lunches = await api.get('/admin/events?event_type=launch');
