@@ -3,7 +3,6 @@ import { api } from '../api.js';
 // ── Configuration & Colors ──────────────────────────────────────────────────
 const EVENT_COLORS = {
   news:        { bg: '#eff6ff', color: '#2563eb', label: '📰 AI News' },
-  launch:      { bg: '#fef3c7', color: '#d97706', label: '🚀 Launch' },
   workshop:    { bg: '#dcfce7', color: '#16a34a', label: '🛠️ Workshop' },
   webinar:     { bg: '#ede9fe', color: '#7c3aed', label: '💻 Webinar' },
   conference:  { bg: '#fee2e2', color: '#dc2626', label: '🎤 Conference' },
@@ -120,7 +119,6 @@ export async function render(el) {
   el.innerHTML = `
     <div class="filter-pills" id="whatson-filters" style="margin-bottom:20px; display:flex; gap:8px; flex-wrap:wrap;">
       <span class="pill active" data-filter="all">All</span>
-      <span class="pill" data-filter="launch">🚀 Launches</span>
       <span class="pill" data-filter="workshop">🛠️ Workshops</span>
       <span class="pill" data-filter="webinar">💻 Webinars</span>
       <span class="pill" data-filter="news">📰 AI News</span>

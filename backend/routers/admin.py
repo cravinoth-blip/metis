@@ -196,7 +196,7 @@ def create_event(
     db: Session = Depends(get_db)
 ):
     event = models.Event(
-        **event_data.model_dump(),
+        **event_data.model_dump(exclude={"is_active", "registered_count", "created_at"}),
         is_active=True,
         registered_count=0,
         created_at=datetime.now(timezone.utc)
@@ -212,7 +212,7 @@ def create_event(
 
 @router.put("/events/{event_id}")
 def update_event(
-    event_id: str,  # <--- Change this from int to str
+    event_id: int,
     update_data: schemas.EventUpdate,
     _=Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -229,7 +229,7 @@ def update_event(
 
 @router.delete("/events/{event_id}")
 def delete_event(
-    event_id: str,  # <--- Change this from int to str
+    event_id: int,
     _=Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
@@ -601,6 +601,62 @@ def build_learning_module(
     db.refresh(module)
     
     return module
+
+# ── AI Tools ──────────────────────────────────────────────────────────────────
+
+@router.get("/ai-tools", response_model=List[schemas.AIToolOut])
+def list_ai_tools(
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return db.query(models.AITool).filter(models.AITool.is_active == True).order_by(models.AITool.name).all()
+
+
+@router.post("/ai-tools", response_model=schemas.AIToolOut, status_code=201)
+def create_ai_tool(
+    data: schemas.AIToolCreate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = models.AITool(**data.model_dump())
+    db.add(tool)
+    db.commit()
+    db.refresh(tool)
+    return tool
+
+
+@router.put("/ai-tools/{tool_id}", response_model=schemas.AIToolOut)
+def update_ai_tool(
+    tool_id: int,
+    data: schemas.AIToolUpdate,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = db.query(models.AITool).filter(models.AITool.id == tool_id).first()
+    if not tool:
+        raise HTTPException(status_code=404, detail="AI tool not found")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(tool, field, value)
+    tool.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(tool)
+    return tool
+
+
+@router.delete("/ai-tools/{tool_id}")
+def delete_ai_tool(
+    tool_id: int,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = db.query(models.AITool).filter(models.AITool.id == tool_id).first()
+    if not tool:
+        raise HTTPException(status_code=404, detail="AI tool not found")
+    tool.is_active = False
+    tool.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"message": "AI tool deactivated"}
+
 
 @router.get("/events", response_model=List[schemas.EventOut])
 def get_events(

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 from database_seeders.admin_user_seeder import seed_admin_user
 from database_seeders.event_seeder import seed_all_events
 from database_seeders.learnings_seeder import seed_learnings
+from database_seeders.aitools_seeder import seed_ai_tools
 
 async def seed_database():
     """Run all seeding functions sequentially."""
@@ -23,6 +24,9 @@ async def seed_database():
 
     # 3. Seed Learnings/Courses (Asynchronous)
     await seed_learnings()
+
+    # 4. Seed AI Tools (Synchronous)
+    seed_ai_tools()
 
     logger.info("Database seeding completed successfully.")
 

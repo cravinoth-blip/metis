@@ -81,7 +81,7 @@
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) localStorage.setItem('metis_user', JSON.stringify(await res.json()));
-      location.href = '/dashboard';
+      location.href = '/skillgames';
     }
 
     function showError(id, msg) {

@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from database import engine, Base, SessionLocal
-from routers import auth_router, users, quiz, admin, events, courses
+from routers import auth_router, users, quiz, admin, events, courses, ai_tools
 import models
 from scraper import scrape_ai_events
 from pathlib import Path
@@ -106,6 +106,7 @@ app.include_router(quiz.router, prefix="/api/quiz")
 app.include_router(admin.router, prefix="/api/admin")
 app.include_router(events.router, prefix="/api/events")
 app.include_router(courses.router, prefix="/api/courses")
+app.include_router(ai_tools.router, prefix="/api/ai-tools")
 
 
 @app.get("/api/debug")

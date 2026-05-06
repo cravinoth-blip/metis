@@ -146,37 +146,28 @@ class LeaderboardEntry(BaseModel):
 # Event Schemas
 # ==============================================================================
 
+
 class EventBase(BaseModel):
     title: str
-    description: Optional[str] = ""
-    event_type: str = "webinar"  # "news" | "launch" | "workshop" | "webinar"
-    category: Optional[str] = None
-    tags: str = "[]"
-    
-    # People
-    speaker: Optional[str] = None
-    organizer: Optional[str] = None
+    description: Optional[str] = None
+    event_type: str
     host: Optional[str] = None
-
-    # Scheduling
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
     event_date: Optional[str] = None
     event_time: Optional[str] = None
-    duration_minutes: Optional[int] = None
-
-    # Logistics
     location: Optional[str] = None
-    format: Optional[str] = None   # 'in-person', 'online', 'hybrid'
-    platform: Optional[str] = None # 'Zoom', 'Teams', 'YouTube'
-
-    # Links & Registration
-    url: Optional[str] = None
-    registration_url: Optional[str] = None
-
-    # Gamification & Limits
+    tags: Optional[str] = None
     xp_reward: int = 0
-    capacity: int = 0
+    capacity: Optional[int] = 0
+    registered_count: Optional[int] = 0
+    source_url: Optional[str] = None
+    is_active: bool = True
+    duration_minutes: Optional[int] = None
+    registration_url: Optional[str] = None
+    speaker: Optional[str] = None
+    organizer: Optional[str] = None
+    format: Optional[str] = None
+    platform: Optional[str] = None
+
 
 class EventCreate(EventBase):
     pass
@@ -208,7 +199,7 @@ class EventOut(EventBase):
     """Unified schema for sending Event data to the frontend."""
     model_config = ConfigDict(from_attributes=True)
 
-    id: str  # Changed to str to match UUID seeder
+    id: int
     registered_count: int = 0
     is_registered: bool = False # Populated by the router logic
     is_active: bool
@@ -364,7 +355,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-# Unified Activity schemas (workshop | webinar | launch)
+# Unified Activity schemas (workshop | webinar)
 class ActivityOut(BaseModel):
     id: str
     event_type: str
@@ -536,3 +527,39 @@ class ModuleBuilderCreate(BaseModel):
     duration: int = 10
     xp_reward: int = 50
     sections: List[BuilderSection] = []
+
+
+class AIToolCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    emoji_logo: Optional[str] = None
+    tags: Optional[str] = None
+    url: Optional[str] = None
+    provider: Optional[str] = None
+    is_enterprise: bool = False
+
+
+class AIToolUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    emoji_logo: Optional[str] = None
+    tags: Optional[str] = None
+    url: Optional[str] = None
+    provider: Optional[str] = None
+    is_enterprise: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class AIToolOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    emoji_logo: Optional[str] = None
+    tags: Optional[str] = None
+    url: Optional[str] = None
+    provider: Optional[str] = None
+    is_enterprise: bool
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

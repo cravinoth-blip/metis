@@ -1,11 +1,9 @@
 import logging
-from uuid import uuid4
 from database import SessionLocal
 from models import Event
 from scraper import scrape_ai_events
 from default_data.workshop_data import WORKSHOPS
 from default_data.webinar_data import WEBINARS
-from default_data.launch_data import LAUNCHES
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,6 @@ async def seed_all_events():
                 time_str = evt_data.get("event_time", "")
                 display_date = f"{date_str} {time_str}".strip() if time_str else date_str
                 event_entries.append(Event(
-                    id=str(uuid4()),
                     event_type=evt_data.get("event_type", "news"),
                     title=evt_data["title"],
                     description=evt_data.get("description"),
@@ -52,7 +49,6 @@ async def seed_all_events():
         # 3. Process Manual Workshops
         for w in WORKSHOPS.values():
             event_entries.append(Event(
-                id=str(uuid4()),
                 event_type="workshop",
                 title=w["title"],
                 description=w.get("description"),
@@ -69,7 +65,6 @@ async def seed_all_events():
         # 4. Process Manual Webinars
         for wb in WEBINARS.values():
             event_entries.append(Event(
-                id=str(uuid4()),
                 event_type="webinar",
                 title=wb["title"],
                 description=wb.get("description"),
@@ -83,25 +78,8 @@ async def seed_all_events():
                 is_active=True,
             ))
 
-        # 5. Process Manual Launches
-        for ln in LAUNCHES.values():
-            event_entries.append(Event(
-                id=str(uuid4()),
-                event_type="launch",
-                title=ln["title"],
-                description=ln.get("description"),
-                tags=str(ln.get("tags", [])),
-                speaker=ln.get("speaker"),
-                location=ln.get("location"),
-                event_date=ln.get("event_date"),
-                event_time=ln.get("event_time"),
-                duration_minutes=ln.get("duration_minutes"),
-                capacity=ln.get("capacity"),
-                xp_reward=ln.get("xp_reward", 0),
-                is_active=True,
-            ))
-
-        # 6. Commit everything to the database
+       
+        # 5. Commit everything to the database
         db.add_all(event_entries)
         db.commit()
         logger.info(f"Successfully seeded {len(event_entries)} total events into the database.")
