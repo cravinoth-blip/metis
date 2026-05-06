@@ -127,10 +127,15 @@ _templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 async def login_page(request: Request):
     return _templates.TemplateResponse("login.html", {"request": request})
 
+@app.get("/learning-template", response_class=HTMLResponse, include_in_schema=False)
+async def learning_template(request: Request):
+    return _templates.TemplateResponse("add_learning_module.html", {"request": request})
 
 @app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
 async def serve_spa(request: Request, full_path: str):
     return _templates.TemplateResponse("index.html", {"request": request})
+
+
 
 
 # ---------------------------------------------------------------------------

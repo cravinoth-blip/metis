@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 async def seed_all_events():
     """
     Main entry point for seeding. 
-    Combines scraped news events and manual activity data into the Event table.
+    Combines scraped news events data into the Event table.
     """
     db = SessionLocal()
     try:

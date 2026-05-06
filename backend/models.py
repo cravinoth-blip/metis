@@ -157,44 +157,13 @@ class CompletedUserModule(Base):
     user = relationship("User", back_populates="completed_learning_modules")
     module = relationship("LearningModule", back_populates="completions")
 
-class Activity(Base):
-    """Unified model for workshops, webinars."""
-    __tablename__ = "activities"
-    id = Column(String, primary_key=True, index=True)
-    event_type = Column(String, nullable=False)       # "workshop" | "webinar"
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    category = Column(String, nullable=True)
-    level = Column(Integer, default=1)
-    tags = Column(String, nullable=True)
-    # People
-    speaker = Column(String, nullable=True)           # presenter (webinars)
-    organizer = Column(String, nullable=True)         # organizer (workshops)
-    # Scheduling
-    start_date = Column(DateTime(timezone=True), nullable=True)
-    end_date = Column(DateTime(timezone=True), nullable=True)
-    event_date = Column(String, nullable=True)
-    event_time = Column(String, nullable=True)
-    duration_minutes = Column(Integer, nullable=True)
-    # Location / platform
-    location = Column(String, nullable=True)
-    format = Column(String, nullable=True)            # in-person/online/hybrid (workshops)
-    platform = Column(String, nullable=True)          # Zoom/Teams/etc. (webinars)
-    # Registration
-    registration_url = Column(String, nullable=True)
-    capacity = Column(Integer, nullable=True)
-    xp_reward = Column(Integer, default=0)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
 class AITool(Base):
     __tablename__ = "ai_tools"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     emoji_logo = Column(String, nullable=True)
+    category = Column(String, nullable=True)
     tags = Column(String, nullable=True)
     url = Column(String, nullable=True)
     provider = Column(String, nullable=True)

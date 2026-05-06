@@ -351,82 +351,6 @@ class LearningUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
-
-# Unified Activity schemas (workshop | webinar)
-class ActivityOut(BaseModel):
-    id: str
-    event_type: str
-    title: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    level: int = 1
-    tags: Optional[str] = None
-    speaker: Optional[str] = None
-    organizer: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    event_date: Optional[str] = None
-    event_time: Optional[str] = None
-    duration_minutes: Optional[int] = None
-    location: Optional[str] = None
-    format: Optional[str] = None
-    platform: Optional[str] = None
-    menu: Optional[str] = None
-    registration_url: Optional[str] = None
-    capacity: Optional[int] = None
-    xp_reward: int = 0
-
-    class Config:
-        from_attributes = True
-
-class ActivityCreate(BaseModel):
-    event_type: str
-    title: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    level: int = 1
-    tags: Optional[str] = None
-    speaker: Optional[str] = None
-    organizer: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    event_date: Optional[str] = None
-    event_time: Optional[str] = None
-    duration_minutes: Optional[int] = None
-    location: Optional[str] = None
-    format: Optional[str] = None
-    platform: Optional[str] = None
-    menu: Optional[str] = None
-    registration_url: Optional[str] = None
-    capacity: Optional[int] = None
-    xp_reward: int = 0
-
-class ActivityUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    level: Optional[int] = None
-    tags: Optional[str] = None
-    speaker: Optional[str] = None
-    organizer: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    event_date: Optional[str] = None
-    event_time: Optional[str] = None
-    duration_minutes: Optional[int] = None
-    location: Optional[str] = None
-    format: Optional[str] = None
-    platform: Optional[str] = None
-    menu: Optional[str] = None
-    registration_url: Optional[str] = None
-    capacity: Optional[int] = None
-    xp_reward: Optional[int] = None
-    is_active: Optional[bool] = None
-
-
 # Shared properties
 class LearningModuleBase(BaseModel):
     title: str
@@ -533,6 +457,7 @@ class AIToolCreate(BaseModel):
     name: str
     description: Optional[str] = None
     emoji_logo: Optional[str] = None
+    category: Optional[str] = None
     tags: Optional[str] = None
     url: Optional[str] = None
     provider: Optional[str] = None
@@ -545,6 +470,7 @@ class AIToolUpdate(BaseModel):
     emoji_logo: Optional[str] = None
     tags: Optional[str] = None
     url: Optional[str] = None
+    category: Optional[str] = None
     provider: Optional[str] = None
     is_enterprise: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -558,6 +484,7 @@ class AIToolOut(BaseModel):
     tags: Optional[str] = None
     url: Optional[str] = None
     provider: Optional[str] = None
+    category: Optional[str] = None
     is_enterprise: bool
     is_active: bool
     created_at: datetime

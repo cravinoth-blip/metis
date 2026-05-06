@@ -104,7 +104,6 @@ export async function render(el) {
       pane.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <input id="user-search" class="form-input search-input" placeholder="Search users…" value="${q}">
-          <button id="new-user-btn" class="btn btn-primary btn-sm">+ New User</button>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <table class="table">
@@ -134,7 +133,6 @@ export async function render(el) {
         draw(); 
       });
 
-      document.getElementById('new-user-btn').onclick = () => renderUserForm();
 
       pane.querySelectorAll('.edit-user').forEach(btn =>
         btn.addEventListener('click', () => {
@@ -685,58 +683,73 @@ export async function render(el) {
   async function drawAITools(pane) {
     let tools = await api.get('/admin/ai-tools');
     let q = '';
+    let toolTypeFilter = 'all'; // State for the new filter
 
     function renderForm(t = null) {
       const overlay = window._metis.openModal(`
         <button class="modal-close" id="atclose">✕</button>
         <h3 style="margin-bottom:16px">${t ? 'Edit AI tool' : 'New AI tool'}</h3>
+        
         <div class="form-group">
           <label class="form-label">Name *</label>
           <input id="at-name" class="form-input" value="${t?.name ?? ''}">
         </div>
+        
         <div class="form-group">
           <label class="form-label">Description</label>
           <textarea id="at-desc" class="form-input" rows="3">${t?.description ?? ''}</textarea>
         </div>
+        
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group">
-            <label class="form-label">Emoji logo</label>
-            <input id="at-emoji" class="form-input" placeholder="e.g. 🤖" value="${t?.emoji_logo ?? ''}">
+            <label class="form-label">Category</label>
+            <input id="at-category" class="form-input" placeholder="e.g. Research" value="${t?.category ?? ''}">
           </div>
           <div class="form-group">
             <label class="form-label">Provider</label>
             <input id="at-provider" class="form-input" placeholder="e.g. Anthropic" value="${t?.provider ?? ''}">
           </div>
           <div class="form-group">
+            <label class="form-label">Emoji logo</label>
+            <input id="at-emoji" class="form-input" placeholder="e.g. 🤖" value="${t?.emoji_logo ?? ''}">
+          </div>
+          <div class="form-group">
             <label class="form-label">URL</label>
             <input id="at-url" class="form-input" placeholder="https://..." value="${t?.url ?? ''}">
           </div>
         </div>
+        
         <div class="form-group">
           <label class="form-label">Tags (comma-separated)</label>
           <input id="at-tags" class="form-input" placeholder="Writing, Research, Code" value="${t?.tags ?? ''}">
         </div>
+        
         <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:8px">
           <input id="at-enterprise" type="checkbox" ${t?.is_enterprise ? 'checked' : ''} style="width:auto">
           <label for="at-enterprise" class="form-label" style="margin:0">Enterprise tool</label>
         </div>
+        
         <div style="text-align:right;margin-top:16px">
           <button id="at-save" class="btn btn-primary">Save</button>
         </div>`);
 
       overlay.querySelector('#atclose').onclick = () => overlay.remove();
+      
       overlay.querySelector('#at-save').addEventListener('click', async () => {
         const name = overlay.querySelector('#at-name').value.trim();
         if (!name) { window._metis.toast('Name is required', 'error'); return; }
+        
         const payload = {
           name,
-          description:  overlay.querySelector('#at-desc').value     || null,
-          emoji_logo:   overlay.querySelector('#at-emoji').value    || null,
-          provider:     overlay.querySelector('#at-provider').value || null,
-          url:          overlay.querySelector('#at-url').value      || null,
-          tags:         overlay.querySelector('#at-tags').value     || null,
+          description:  overlay.querySelector('#at-desc').value      || null,
+          category:     overlay.querySelector('#at-category').value  || null,
+          emoji_logo:   overlay.querySelector('#at-emoji').value     || null,
+          provider:     overlay.querySelector('#at-provider').value  || null,
+          url:          overlay.querySelector('#at-url').value       || null,
+          tags:         overlay.querySelector('#at-tags').value      || null,
           is_enterprise: overlay.querySelector('#at-enterprise').checked,
         };
+
         try {
           if (t) {
             const updated = await api.put(`/admin/ai-tools/${t.id}`, payload);
@@ -753,17 +766,39 @@ export async function render(el) {
     }
 
     function draw() {
-      const filtered = tools.filter(t =>
-        !q || t.name.toLowerCase().includes(q) || (t.tags ?? '').toLowerCase().includes(q)
+      // Apply search string and type filtering
+      let filtered = tools.filter(t =>
+        !q || 
+        t.name.toLowerCase().includes(q) || 
+        (t.category ?? '').toLowerCase().includes(q) ||
+        (t.tags ?? '').toLowerCase().includes(q)
       );
+
+      if (toolTypeFilter === 'enterprise') {
+        filtered = filtered.filter(t => t.is_enterprise);
+      } else if (toolTypeFilter === 'free') {
+        filtered = filtered.filter(t => !t.is_enterprise);
+      }
+
+      const pillStyle = (f) => toolTypeFilter === f
+        ? 'background:var(--primary,#6366f1);color:#fff;border:1px solid transparent'
+        : 'background:transparent;color:var(--text-secondary);border:1px solid var(--border)';
+
       pane.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <input id="at-search" class="form-input search-input" placeholder="Search by name or tag…" value="${q}">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="at-search" class="form-input search-input" placeholder="Search by name, category, or tag…" value="${q}">
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-sm at-filter" data-filter="all" style="${pillStyle('all')}">All</button>
+              <button class="btn btn-sm at-filter" data-filter="enterprise" style="${pillStyle('enterprise')}">Enterprise</button>
+              <button class="btn btn-sm at-filter" data-filter="free" style="${pillStyle('free')}">Free</button>
+            </div>
+          </div>
           <button id="new-at-btn" class="btn btn-primary btn-sm">+ New tool</button>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <table class="table">
-            <thead><tr><th></th><th>Name</th><th>Provider</th><th>Description</th><th>Tags</th><th>URL</th><th>Type</th><th>Actions</th></tr></thead>
+            <thead><tr><th></th><th>Name</th><th>Category</th><th>Provider</th><th>Description</th><th>Tags</th><th>URL</th><th>Type</th><th>Actions</th></tr></thead>
             <tbody>
               ${filtered.length ? filtered.map(t => {
                 const badge = t.is_enterprise
@@ -772,6 +807,7 @@ export async function render(el) {
                 return `<tr>
                   <td style="font-size:1.4em;text-align:center">${t.emoji_logo ?? '🔧'}</td>
                   <td style="font-weight:500">${t.name}</td>
+                  <td>${t.category ?? '—'}</td>
                   <td style="font-size:0.9em">${t.provider ?? '—'}</td>
                   <td style="max-width:220px;white-space:normal;font-size:0.9em">${t.description ?? '—'}</td>
                   <td style="font-size:0.85em;color:var(--text-secondary)">${t.tags ?? '—'}</td>
@@ -783,20 +819,28 @@ export async function render(el) {
                   </td>
                 </tr>`;
               }).join('')
-              : `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:40px">No AI tools yet.</td></tr>`}
+              : `<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:40px">No AI tools found.</td></tr>`}
             </tbody>
           </table>
         </div>
         <div class="text-sm text-secondary" style="margin-top:10px">${filtered.length} tool${filtered.length !== 1 ? 's' : ''}</div>`;
-
+      
+      // Event listeners
       document.getElementById('at-search').addEventListener('input', e => { q = e.target.value.toLowerCase(); draw(); });
+      
+      pane.querySelectorAll('.at-filter').forEach(btn =>
+        btn.addEventListener('click', () => { toolTypeFilter = btn.dataset.filter; draw(); })
+      );
+
       document.getElementById('new-at-btn').onclick = () => renderForm();
+      
       pane.querySelectorAll('.edit-at').forEach(btn =>
         btn.addEventListener('click', () => {
           const t = tools.find(x => String(x.id) === btn.dataset.id);
           if (t) renderForm(t);
         })
       );
+      
       pane.querySelectorAll('.del-at').forEach(btn =>
         btn.addEventListener('click', async () => {
           if (!confirm('Delete this tool?')) return;
@@ -811,6 +855,8 @@ export async function render(el) {
     }
     draw();
   }
+
+
 
   el.innerHTML = `
     <div class="tabs" id="admin-tabs">
