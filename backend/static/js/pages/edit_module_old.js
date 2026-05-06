@@ -1,29 +1,14 @@
 import { api } from '../api.js';
+import { parseMarkdown } from '../markdown_parser.js';
 
 export async function render(el) {
-    // --- 0. Dynamically load Quill CSS and JS if not present ---
-    if (!document.getElementById('quill-theme-css')) {
-        const link = document.createElement('link');
-        link.id = 'quill-theme-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css';
-        document.head.appendChild(link);
-    }
-    if (!document.getElementById('quill-lib-js')) {
-        const script = document.createElement('script');
-        script.id = 'quill-lib-js';
-        script.src = 'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js';
-        document.head.appendChild(script);
-        // Wait for Quill to load before rendering
-        await new Promise(r => script.onload = r);
-    }
-
     // --- 1. URL Parsing ---
     const urlParams = new URLSearchParams(window.location.hash.includes('?')
         ? window.location.hash.split('?')[1]
         : window.location.search
     );
     const moduleId = urlParams.get('module_id');
+
     if (!moduleId) {
         el.innerHTML = `<div class="empty-state">Error: No module_id provided in URL.</div>`;
         return;
@@ -48,6 +33,7 @@ export async function render(el) {
         }
     }
 
+    // Split any section that has a heading into a separate heading block + content block
     function normalizeSections(raw) {
         const out = [];
         for (const s of raw) {
@@ -61,6 +47,7 @@ export async function render(el) {
         }
         return out;
     }
+
     sections = normalizeSections(sections);
 
     // --- 3. State ---
@@ -70,6 +57,7 @@ export async function render(el) {
         xp_reward: existingModule.xp_reward  ?? 50,
         sections,
     };
+
     let dragStartIndex = null;
 
     const SECTION_TYPES = {
@@ -90,42 +78,33 @@ export async function render(el) {
     function addPoint(si) { moduleData.sections[si].points.push(''); drawSections(); }
     function removePoint(si, pi) { moduleData.sections[si].points.splice(pi, 1); drawSections(); }
 
-    // --- 5. HTML Generator for Preview (Replaces markdown_parser) ---
-    function generatePreviewHTML(sections) {
-        const HEADING  = 'margin:20px 0 8px;font-size:15px;font-weight:700;color:var(--text-main)';
-        const CALLOUT  = 'background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px';
-        
+    // --- 5. Markdown Deparser (exact inverse of markdown_parser.js) ---
+    // heading  → ### text       (parser: /^### (.*$)/ → <h4>)
+    // text     → body           (parser: /\n\n/ → </p><p>)
+    // key_pts  → - item\n- item (parser: /(^- .*)+/ → green box)
+    // tip      → > 💡 **Tip:** …  (parser: /^>\s?/ → callout div)
+    // warning  → > ⚠️ **Warning:** …
+    // example  → > 📝 **Example:** …
+    function deparseToMarkdown(sections) {
         return sections.map(s => {
-            const body   = (s.body || '').trim();
+            const body   = (s.body   || '').trim();
             const points = (s.points || []).filter(p => p.trim());
-            let html = '';
-
-            if (s.type === 'heading') return body ? `<h3 style="${HEADING}">${body}</h3>` : '';
-            if (s.type === 'text') return `<div class="ql-editor" style="padding:0;">${body}</div>`;
-            
-            if (s.type === 'key_points') {
-                if (points.length) {
-                    const items = points.map(p => `<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">${p}</li>`).join('');
-                    return `
-                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0;">
-                        <div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px;display:flex;align-items:center;gap:8px;">✨ Key Points</div>
-                        <ul style="margin:0;color:#14532d;line-height:1.6;">${items}</ul>
-                    </div>`;
-                }
-                return '';
+            switch (s.type) {
+                case 'heading':    return body ? `### ${body}` : '';
+                case 'text':       return body;
+                case 'key_points': return points.map(p => `- ${p}`).join('\n');
+                case 'tip':        return body ? `> 💡 **Tip:** ${body}` : '';
+                case 'warning':    return body ? `> ⚠️ **Warning:** ${body}` : '';
+                case 'example':    return body ? `> 📝 **Example:** ${body}` : '';
+                default:           return body;
             }
-            
-            if (s.type === 'tip') html = `<div style="${CALLOUT}">💡 <strong>Tip:</strong><div class="ql-editor" style="padding:8px 0 0 0;">${body}</div></div>`;
-            if (s.type === 'warning') html = `<div style="${CALLOUT.replace('#eff6ff','#fef3c7').replace('#3b82f6','#b45309')}">⚠️ <strong>Warning:</strong><div class="ql-editor" style="padding:8px 0 0 0;">${body}</div></div>`;
-            if (s.type === 'example') html = `<div style="${CALLOUT.replace('#eff6ff','#ede9fe').replace('#3b82f6','#6d28d9')}">📝 <strong>Example:</strong><div class="ql-editor" style="padding:8px 0 0 0;">${body}</div></div>`;
-            
-            return html;
-        }).join('');
+        }).filter(Boolean).join('\n\n');
     }
 
     // --- 6. UI Renderer ---
     function drawSections() {
         const container = el.querySelector('#sections-container');
+
         if (moduleData.sections.length === 0) {
             container.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;background:#f8fafc;border-radius:12px;border:2px dashed #cbd5e1;color:#64748b;">No sections yet. Select a block type above to begin!</div>`;
             return;
@@ -133,12 +112,12 @@ export async function render(el) {
 
         container.innerHTML = moduleData.sections.map((sec, i) => {
             const config = SECTION_TYPES[sec.type] || SECTION_TYPES.text;
-            let contentHTML;
 
+            let contentHTML;
             if (sec.type === 'heading') {
                 contentHTML = `
                 <div style="margin-top:12px;">
-                    <input type="text" class="form-input head-input" data-sec="${i}" value="${sec.body.replace(/"/g, '&quot;')}" placeholder="Heading text..." style="width:100%;font-size:15px;font-weight:700;">
+                    <input type="text" class="form-input body-input" data-sec="${i}" value="${sec.body.replace(/"/g, '&quot;')}" placeholder="Heading text..." style="width:100%;font-size:15px;font-weight:700;">
                 </div>`;
             } else if (sec.type === 'key_points') {
                 contentHTML = `
@@ -154,13 +133,10 @@ export async function render(el) {
                     <button class="btn btn-secondary btn-sm add-pt-btn" data-sec="${i}" style="margin-top:12px">+ Add Point</button>
                 </div>`;
             } else {
-                // QUILL INTEGRATION: Replaced Textarea with a rich text div
                 contentHTML = `
                 <div style="margin-top:12px;">
                     <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">Body Content</label>
-                    <div style="background:#fff; border-radius: 4px;">
-                        <div class="quill-editor" data-sec="${i}" style="min-height: 120px;">${sec.body}</div>
-                    </div>
+                    <textarea class="form-input body-input" data-sec="${i}" placeholder="Write your ${config.label.toLowerCase()} here..." style="width:100%;height:100px;resize:vertical">${sec.body.replace(/</g, '&lt;')}</textarea>
                 </div>`;
             }
 
@@ -184,33 +160,7 @@ export async function render(el) {
 
     function attachListeners() {
         const container = el.querySelector('#sections-container');
-
-        // Initialize Quill Instances for newly rendered blocks
-        container.querySelectorAll('.quill-editor').forEach(editorEl => {
-            const secIdx = editorEl.dataset.sec;
-            
-            const quill = new window.Quill(editorEl, {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        [{ 'font': [] }, { 'size': [] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'color': [] }, { 'background': [] }],
-                        [{ 'header': '1' }, { 'header': '2' }, 'blockquote', 'code-block'],
-                        [{ 'list': 'ordered' }, { 'list': 'bullet'}],
-                        ['link', 'image', 'video'],
-                        ['clean']
-                    ]
-                }
-            });
-
-            quill.on('text-change', () => {
-                moduleData.sections[secIdx].body = quill.getSemanticHTML();
-            });
-        });
-
-        // Inputs & Buttons
-        container.querySelectorAll('.head-input').forEach(inp => {
+        container.querySelectorAll('.body-input').forEach(inp => {
             inp.oninput = (e) => { moduleData.sections[e.target.dataset.sec].body = e.target.value; };
         });
         container.querySelectorAll('.pt-input').forEach(inp => {
@@ -226,7 +176,6 @@ export async function render(el) {
             btn.onclick = (e) => removePoint(e.target.dataset.sec, e.target.dataset.pt);
         });
 
-        // Drag & Drop
         container.querySelectorAll('.section-block').forEach(block => {
             block.addEventListener('dragstart', (e) => {
                 dragStartIndex = parseInt(e.currentTarget.dataset.secIdx);
@@ -273,6 +222,7 @@ export async function render(el) {
                     <button id="save-btn" class="btn btn-success">Save Changes</button>
                 </div>
             </div>
+
             <div style="background:#f8fafc;padding:20px;border-radius:12px;border:1px solid var(--border);margin-bottom:24px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;">
                 <div>
                     <label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block">Module Title</label>
@@ -287,6 +237,7 @@ export async function render(el) {
                     <input id="mod-xp" type="number" class="form-input" value="${moduleData.xp_reward}" style="width:100%">
                 </div>
             </div>
+
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:12px;">
                 <span style="font-weight:600;font-size:14px;">Add Block:</span>
                 <select id="section-type-select" class="form-input" style="flex:1;max-width:200px;">
@@ -299,6 +250,7 @@ export async function render(el) {
                 </select>
                 <button id="add-sec-btn" class="btn btn-secondary">+ Add Section</button>
             </div>
+
             <div id="sections-container"></div>
         </div>`;
 
@@ -311,7 +263,7 @@ export async function render(el) {
 
     // --- 9. Preview ---
     el.querySelector('#preview-btn').onclick = () => {
-        const html = generatePreviewHTML(moduleData.sections);
+        const html = parseMarkdown(deparseToMarkdown(moduleData.sections));
         const overlay = window._metis.openModal(`
             <button class="modal-close" id="preview-close">✕</button>
             <div style="margin-bottom:24px;">
@@ -336,8 +288,7 @@ export async function render(el) {
             window._metis.toast('Please enter a module title', 'error');
             return;
         }
-        
-        // Clean sections up before saving
+
         const cleanSections = moduleData.sections.map(s => ({
             ...s,
             points: s.type === 'key_points' ? s.points.filter(p => p.trim()) : [],
@@ -353,7 +304,7 @@ export async function render(el) {
         const saveBtn = el.querySelector('#save-btn');
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
-        
+
         try {
             await api.put(`/admin/learning-modules/${moduleId}`, payload);
             window._metis.toast('Module updated!', 'success');
