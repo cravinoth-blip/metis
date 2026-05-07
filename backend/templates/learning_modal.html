@@ -1,0 +1,60 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">{{ 'Edit' if learning else 'New' }} Learning Resource</h3>
+
+    {% if learning %}
+    <form hx-put="/api/admin/ui/learnings/{{ learning.id }}" hx-target="#learnings-tab-content" hx-swap="outerHTML">
+    {% else %}
+    <form hx-post="/api/admin/ui/learnings" hx-target="#learnings-tab-content" hx-swap="outerHTML">
+    {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input name="title" required class="form-input" value="{{ learning.title if learning else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-input" rows="3">{{ learning.description if learning else '' }}</textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input name="category" class="form-input" placeholder="e.g. Prompt Engineering" value="{{ learning.category if learning else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select name="lr_type" class="form-input form-select">
+            <option value="">&#8212; select &#8212;</option>
+            {% for t in ['article','video','course','tutorial','podcast','book','other'] %}
+            <option {% if learning and learning.type == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Level (1&#8211;5)</label>
+          <input type="number" name="level" class="form-input" min="1" max="5" value="{{ learning.level if learning else 1 }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Est. Duration (min)</label>
+          <input type="number" name="estimated_duration_min" class="form-input" min="1" value="{{ learning.estimated_duration_min if learning and learning.estimated_duration_min else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">XP Reward</label>
+          <input type="number" name="xp_reward" class="form-input" min="0" value="{{ learning.xp_reward if learning else 0 }}">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:24px">
+          <input type="checkbox" name="is_mandatory" value="true" id="lr-mandatory" {% if learning and learning.is_mandatory %}checked{% endif %} style="width:auto">
+          <label for="lr-mandatory" class="form-label" style="margin:0">Mandatory</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags (comma-separated)</label>
+        <input name="tags" class="form-input" placeholder="AI, LLM, beginner" value="{{ learning.tags if learning else '' }}">
+      </div>
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -108,10 +108,9 @@ async function openQuiz(quiz) {
 }
 
 export async function render(el) {
-  const [quizzes, stats, leaderboard] = await Promise.all([
+  const [quizzes, stats] = await Promise.all([
     api.get('/quiz/'),
     api.get('/users/me/stats'),
-    api.get('/users/leaderboard'),
   ]);
   const user = stats.user ?? {};
   let activeTab = 'quizzes';
@@ -153,30 +152,12 @@ export async function render(el) {
       }
       drawQuizzes();
 
-    } else if (activeTab === 'leaderboard') {
-      pane.innerHTML = `
-        <div class="card">
-          ${(leaderboard ?? []).slice(0, 20).map((u, i) => `
-            <div class="leaderboard-row">
-              <span class="lb-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
-              <div class="avatar" style="width:30px;height:30px;font-size:11px">${u.avatar_initials??'??'}</div>
-              <div style="flex:1">
-                <div style="font-weight:500">${u.full_name ?? u.username}</div>
-                <div class="text-sm text-secondary">${u.department ?? ''}</div>
-              </div>
-              <div style="text-align:right">
-                <div class="font-bold">${u.xp ?? 0} XP</div>
-                <div class="text-sm text-secondary">Lv ${u.level ?? 0}</div>
-              </div>
-            </div>`).join('')}
-        </div>`;
     }
   }
 
   el.innerHTML = `
     <div class="tabs" id="tabs">
       <button class="tab-btn active" data-tab="quizzes">Quizzes</button>
-      <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
     </div>
     <div id="tab-pane"></div>`;
 

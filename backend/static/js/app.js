@@ -25,8 +25,6 @@ const ROUTES = {
   '/skillgames':      () => import('./pages/skillgames.js'),
   '/learning':        () => import('./pages/learning.js'),
   '/whatson':         () => import('./pages/whatson.js'),
-  '/aitools':         () => import('./pages/aitools.js'),
-  '/admin':           () => import('./pages/admin.js'),
   '/add-module':      () => import('./pages/add_module.js'),
   '/edit-module':     () => import('./pages/edit_module.js'),
 };
@@ -36,8 +34,6 @@ const TITLES = {
   '/skillgames':      'Skill Games',
   '/learning':        'Learning',
   '/whatson':         "What's On",
-  '/aitools':         'AI Tools',
-  '/admin':           'Admin',
   '/add-module':      'Module Builder',
   '/edit-module':     'Edit Module',
 };
@@ -98,9 +94,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   refreshShell();
 
-  // Sidebar nav clicks
+  // Sidebar nav clicks — admin link does a full page navigation, others go through the SPA router
   document.querySelectorAll('.nav-link').forEach(a =>
-    a.addEventListener('click', e => { e.preventDefault(); navigate(a.dataset.route); })
+    a.addEventListener('click', e => {
+      if (a.id === 'admin-link') return;
+      if (a.id === 'aitools-link') return;
+
+      e.preventDefault();
+      navigate(a.dataset.route);
+    })
   );
 
   // Logout

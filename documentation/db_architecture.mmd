@@ -1,0 +1,156 @@
+%%{init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': '#BB2528',
+'primaryTextColor': '#000000ff',
+'primaryBorderColor': '#7C0000'
+}
+}}%%
+erDiagram
+    USERS ||--o{ QUIZ_ATTEMPTS : completes
+    USERS ||--o{ EVENT_REGISTRATIONS : registers_for
+    USERS ||--o{ TOOL_USAGES : logs
+    USERS ||--o{ LEARNING_MODULE_COMPLETIONS : finishes
+    USERS ||--o{ USER_BADGES : earns
+
+    QUIZZES ||--o{ QUIZ_ATTEMPTS : attempted_in
+    QUIZZES ||--o{QUIZ_QUESTIONS : contains
+
+    QUIZ_QUESTIONS}o--|| QUIZZES : belongs_to
+
+    EVENTS ||--o{ EVENT_REGISTRATIONS : has
+
+    LEARNINGS ||--o{ LEARNING_MODULES : contains
+    LEARNING_MODULES ||--o{ LEARNING_MODULE_COMPLETIONS : completed_by
+
+    AI_TOOLS ||--o{ TOOL_USAGES : used_in
+
+    BADGES ||--o{ USER_BADGES : awarded_as
+
+
+    USERS {
+        int id PK
+        string email
+        string username
+        string hashed_password
+        string full_name
+        string department
+        string avatar_initials
+        boolean is_admin
+        int xp
+        int level
+        int streak
+        datetime last_login
+        datetime created_at
+        datetime updated_at
+    }
+
+    QUIZZES {
+        int id PK
+        string title
+        string category
+        string difficulty
+        int min_level
+        int xp_reward
+        boolean is_active
+    }
+
+    QUIZ_QUESTIONS {
+        int id PK
+        int quiz_id FK
+        string question_type
+        string question_text
+        json options
+        string correct_answer
+        string explanation
+    }
+
+    QUIZ_ATTEMPTS {
+        int id PK
+        int user_id FK
+        int quiz_id FK
+        float score_pct
+        int xp_earned
+        json answers
+        datetime completed_at
+    }
+
+    EVENTS {
+        int id PK
+        string title
+        string description
+        string event_type
+        datetime event_date
+        int capacity
+        int registered_count
+        int xp_reward
+        boolean is_active
+    }
+
+    EVENT_REGISTRATIONS {
+        int id PK
+        int user_id FK
+        int event_id FK
+        datetime registered_at
+    }
+
+    LEARNINGS {
+        string id PK
+        string title
+        string description
+        string category
+        string type
+        int level
+        string tags
+        int xp_reward
+        boolean is_active
+    }
+
+    LEARNING_MODULES {
+        string id PK
+        string learning_id FK
+        string title
+        string content_text
+        string content_url
+        int order
+        int xp_reward
+    }
+
+    LEARNING_MODULE_COMPLETIONS {
+        int id PK
+        int user_id FK
+        string module_id FK
+        datetime completed_at
+    }
+
+    AI_TOOLS {
+        int id PK
+        string name
+        string description
+        string url
+        string category
+        boolean is_enterprise
+        boolean is_active
+    }
+
+    TOOL_USAGES {
+        int id PK
+        int user_id FK
+        int tool_id FK
+        datetime used_at
+    }
+
+    BADGES {
+        int id PK
+        string name
+        string description
+        string icon
+        string unlock_criteria
+    }
+
+    USER_BADGES {
+        int id PK
+        int user_id FK
+        int badge_id FK
+        datetime earned_at
+    }

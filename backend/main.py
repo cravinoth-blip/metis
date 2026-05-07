@@ -131,6 +131,14 @@ async def login_page(request: Request):
 async def learning_template(request: Request):
     return _templates.TemplateResponse("add_learning_module.html", {"request": request})
 
+@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+async def admin_page(request: Request):
+    return _templates.TemplateResponse("admin_base.html", {"request": request, "active_page": "admin"})
+
+@app.get("/aitools", response_class=HTMLResponse, include_in_schema=False)
+async def aitools_page(request: Request):
+    return _templates.TemplateResponse("aitools_page.html", {"request": request, "active_page": "aitools"})
+
 @app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
 async def serve_spa(request: Request, full_path: str):
     return _templates.TemplateResponse("index.html", {"request": request})

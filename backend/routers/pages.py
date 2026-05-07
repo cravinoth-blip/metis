@@ -290,14 +290,19 @@ async def aitools_page(request: Request, db: Session = Depends(get_db)):
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request, db: Session = Depends(get_db)):
     user = _get_user(request, db)
+    
+    # 1. Auth Checks
     if not user:
         return _redirect_login()
     if not user.is_admin:
         return RedirectResponse("/dashboard", status_code=302)
-    return templates.TemplateResponse("admin.html", {
+
+    # 2. Return the new HTMX Shell
+    # Note: We pass 'user' so the sidebar/header can show their name/avatar
+    return templates.TemplateResponse("admin_base.html", {
         "request": request,
-        "user": user,
-        "active_page": "admin",
+        "user": user,          # Used for profile info in the shell
+        "active_page": "admin" # Used to highlight the nav link
     })
 
 
@@ -327,3 +332,102 @@ async def edit_module_page(request: Request, db: Session = Depends(get_db)):
         "user": user,
         "active_page": "admin",
     })
+
+
+
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from database import get_db
+
+# Assuming you have a function to get the user from an HTTP-Only Cookie
+# If the cookie is missing/invalid, it should return None.
+from auth import get_current_user_from_cookie 
+
+router = APIRouter(tags=["frontend"])
+templates = Jinja2Templates(directory="templates")
+
+def require_auth(request: Request, db: Session):
+    """Dependency to enforce login and return the user object."""
+    user = get_current_user_from_cookie(request, db)
+    if not user:
+        # If HTMX request, we must send a special header to redirect the whole page
+        if "hx-request" in request.headers:
+            raise HTTPException(status_code=401, headers={"HX-Redirect": "/login"})
+        # Normal browser redirect
+        raise HTTPException(status_code=302, headers={"Location": "/login"})
+    return user
+
+# ── Root Redirect ──────────────────────────────────────────────────────────
+@router.get("/", response_class=HTMLResponse)
+async def root():
+    return RedirectResponse(url="/dashboard", status_code=302)
+
+# ── Main Nav Routes ────────────────────────────────────────────────────────
+@router.get("/dashboard", response_class=HTMLResponse)
+async def page_dashboard(request: Request, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request, "user": user, 
+        "active_page": "dashboard", "title": "Dashboard"
+    })
+
+@router.get("/skillgames", response_class=HTMLResponse)
+async def page_skillgames(request: Request, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("skillgames.html", {
+        "request": request, "user": user, 
+        "active_page": "skillgames", "title": "Skill Games"
+    })
+
+@router.get("/learning", response_class=HTMLResponse)
+async def page_learning(request: Request, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("learning.html", {
+        "request": request, "user": user, 
+        "active_page": "learning", "title": "Learning"
+    })
+
+@router.get("/whatson", response_class=HTMLResponse)
+async def page_whatson(request: Request, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("whatson.html", {
+        "request": request, "user": user, 
+        "active_page": "whatson", "title": "What's On"
+    })
+
+@router.get("/aitools", response_class=HTMLResponse)
+async def page_aitools(request: Request, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("aitools.html", {
+        "request": request, "user": user, 
+        "active_page": "aitools", "title": "AI Tools"
+    })
+
+# ── Sub-pages (Requires query params) ──────────────────────────────────────
+@router.get("/add-module", response_class=HTMLResponse)
+async def page_add_module(request: Request, learning_id: str, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("add_module.html", {
+        "request": request, "user": user, 
+        "active_page": "learning", "title": "Module Builder",
+        "learning_id": learning_id
+    })
+
+@router.get("/edit-module", response_class=HTMLResponse)
+async def page_edit_module(request: Request, module_id: str, db: Session = Depends(get_db)):
+    user = require_auth(request, db)
+    return templates.TemplateResponse("edit_module.html", {
+        "request": request, "user": user, 
+        "active_page": "learning", "title": "Edit Module",
+        "module_id": module_id
+    })
+
+# ── Logout Route ───────────────────────────────────────────────────────────
+@router.post("/logout")
+async def logout(response: Response):
+    # Instead of localStorage.removeItem, we delete the auth cookie
+    response.delete_cookie("metis_token")
+    response.headers["HX-Redirect"] = "/login"
+    return HTMLResponse("")

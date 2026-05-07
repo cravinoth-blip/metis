@@ -1,0 +1,78 @@
+<div id="events-tab-content">
+  <input type="hidden" name="type_filter" value="{{ type_filter }}">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by title&#8230;"
+             class="form-input search-input" style="max-width:260px"
+             hx-get="/api/admin/ui/tabs/events"
+             hx-target="#events-tab-content"
+             hx-swap="outerHTML"
+             hx-trigger="keyup changed delay:400ms"
+             hx-include="[name='type_filter']">
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm {% if type_filter == 'all' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/events?type_filter=all"
+                hx-target="#events-tab-content" hx-swap="outerHTML">All</button>
+        <button class="btn btn-sm {% if type_filter == 'workshop' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/events?type_filter=workshop"
+                hx-target="#events-tab-content" hx-swap="outerHTML">Workshops</button>
+        <button class="btn btn-sm {% if type_filter == 'webinar' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/events?type_filter=webinar"
+                hx-target="#events-tab-content" hx-swap="outerHTML">Webinars</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm"
+              hx-get="/api/admin/ui/events/form?event_type=workshop"
+              hx-target="#modal-container">+ Workshop</button>
+      <button class="btn btn-primary btn-sm"
+              hx-get="/api/admin/ui/events/form?event_type=webinar"
+              hx-target="#modal-container">+ Webinar</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="table">
+      <thead>
+        <tr><th>Type</th><th>Title</th><th>Date</th><th>Duration</th><th>Organizer</th><th>XP</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr id="ev-row-{{ e.id }}">
+          <td>
+            {% if e.event_type == 'workshop' %}
+            <span style="font-size:.75em;font-weight:600;padding:2px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8">Workshop</span>
+            {% else %}
+            <span style="font-size:.75em;font-weight:600;padding:2px 8px;border-radius:999px;background:#ede9fe;color:#6d28d9">Webinar</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="font-weight:500">{{ e.title }}</div>
+            {% if e.location %}<div class="text-sm" style="color:var(--text-secondary)">&#128205; {{ e.location }}</div>{% endif %}
+            {% if e.speaker %}<div class="text-sm" style="color:var(--text-secondary)">&#127908; {{ e.speaker }}</div>{% endif %}
+          </td>
+          <td style="font-size:.9em;white-space:nowrap">{{ e.event_date or '&#8212;' }}{% if e.event_time %} {{ e.event_time }}{% endif %}</td>
+          <td>{{ (e.duration_minutes | string + ' min') if e.duration_minutes else '&#8212;' }}</td>
+          <td>{{ e.organizer or '&#8212;' }}</td>
+          <td>{{ e.xp_reward }}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/events/form?event_id={{ e.id }}"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Edit</button>
+            <button class="btn btn-danger btn-sm"
+                    hx-delete="/api/admin/ui/events/{{ e.id }}"
+                    hx-confirm="Delete this event?"
+                    hx-target="#ev-row-{{ e.id }}"
+                    hx-swap="outerHTML">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:32px">No events found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-sm text-secondary" style="margin-top:8px">{{ events|length }} event{{ 's' if events|length != 1 else '' }}</div>
+</div>

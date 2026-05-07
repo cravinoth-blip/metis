@@ -1,0 +1,32 @@
+%%{init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': 'rgba(243, 177, 90, 1)',
+'primaryTextColor': '#000000ff',
+'primaryBorderColor': '#e45959ff'
+}
+}}%%
+flowchart TD
+    %% Users
+    U[Employees / Users] -->|HTTPS| UI[Frontend]
+    A[Administrators] -->|HTTPS| UI
+
+    %% Frontend
+    subgraph Frontend [Presentation Layer]
+        UI
+    end
+
+    %% Backend
+    UI -->|REST API / JWT| API[FastAPI Backend]
+    
+    subgraph Backend [Application Layer]
+        API
+        Scraper[Event Scraper Task]
+    end
+
+    %% Database
+    API -->|SQLAlchemy ORM| DB[(PostgreSQL Database)]
+    Scraper -->|SQLAlchemy ORM| DB
+
+    %% External
+    Scraper -->|HTTP GET| ExtEvents[External Event Sources]

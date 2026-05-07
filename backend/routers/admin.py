@@ -1,10 +1,14 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 import json
 import uuid
+from pathlib import Path
+
 from database import get_db
 import models
 import schemas
@@ -15,6 +19,8 @@ from pydantic import BaseModel
 
 router = APIRouter(tags=["admin"])
 
+templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+
 class ModuleBuildData(BaseModel):
     title: str
     duration: int = 0
@@ -22,28 +28,26 @@ class ModuleBuildData(BaseModel):
     sections: List[Any] = []
 
 
+# ==============================================================================
+# EXISTING JSON API ENDPOINTS (Untouched)
+# ==============================================================================
+
 @router.get("/stats", response_model=schemas.PlatformStats)
 def get_platform_stats(
     _=Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     total_users = db.query(models.User).filter(models.User.is_active == True).count()
-
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     active_today = db.query(models.User).filter(
         models.User.last_login >= today_start
     ).count()
-
     quizzes_today = db.query(models.QuizAttempt).filter(
         models.QuizAttempt.completed_at >= today_start
     ).count()
-
     avg_score = db.query(func.avg(models.QuizAttempt.score_pct)).scalar() or 0.0
-
     total_xp = db.query(func.sum(models.User.xp)).scalar() or 0
-
     total_events = db.query(models.Event).filter(models.Event.is_active == True).count()
-
     return {
         "total_users": total_users,
         "active_today": active_today,
@@ -52,7 +56,6 @@ def get_platform_stats(
         "total_xp_awarded": total_xp,
         "total_events": total_events
     }
-
 
 @router.get("/users")
 def get_all_users(
@@ -83,7 +86,6 @@ def get_all_users(
         })
     return result
 
-
 @router.put("/users/{user_id}")
 def update_user(
     user_id: int,
@@ -94,28 +96,20 @@ def update_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     if update_data.full_name is not None:
         user.full_name = update_data.full_name
-
     if update_data.email is not None:
         user.email = update_data.email
-
     if update_data.is_admin is not None:
         user.is_admin = update_data.is_admin
-
     if update_data.xp is not None:
         user.xp = max(0, update_data.xp)
-
     if update_data.level is not None:
         user.level = max(1, update_data.level)
-
     if update_data.is_active is not None:
         user.is_active = update_data.is_active
-
     if update_data.department is not None:
         user.department = update_data.department
-
     db.commit()
     db.refresh(user)
     return {
@@ -134,7 +128,6 @@ def update_user(
         "last_login": user.last_login.isoformat() if user.last_login else None,
     }
 
-
 @router.delete("/users/{user_id}")
 def deactivate_user(
     user_id: int,
@@ -144,14 +137,11 @@ def deactivate_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
-
     user.is_active = False
     db.commit()
     return {"message": "User deactivated"}
-
 
 @router.get("/quiz-stats", response_model=list[schemas.QuizStats])
 def get_quiz_stats(
@@ -163,7 +153,6 @@ def get_quiz_stats(
         attempts = db.query(models.QuizAttempt).filter(
             models.QuizAttempt.quiz_id == quiz_id
         ).all()
-
         if not attempts:
             result.append(schemas.QuizStats(
                 quiz_id=quiz_id,
@@ -173,11 +162,9 @@ def get_quiz_stats(
                 pass_rate=0.0
             ))
             continue
-
         avg_score = sum(a.score_pct for a in attempts) / len(attempts)
         pass_count = sum(1 for a in attempts if a.score_pct >= 70)
         pass_rate = (pass_count / len(attempts)) * 100
-
         result.append(schemas.QuizStats(
             quiz_id=quiz_id,
             title=quiz["title"],
@@ -185,9 +172,7 @@ def get_quiz_stats(
             avg_score=round(avg_score, 1),
             pass_rate=round(pass_rate, 1)
         ))
-
     return result
-
 
 @router.post("/events", response_model=schemas.EventOut)
 def create_event(
@@ -204,11 +189,9 @@ def create_event(
     db.add(event)
     db.commit()
     db.refresh(event)
-
     result = schemas.EventOut.model_validate(event)
     result.is_registered = False
     return result
-
 
 @router.put("/events/{event_id}")
 def update_event(
@@ -220,7 +203,6 @@ def update_event(
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-
     for field, value in update_data.model_dump(exclude_none=True).items():
         setattr(event, field, value)
         
@@ -241,7 +223,6 @@ def delete_event(
     db.commit()
     return {"message": "Event deleted"}
 
-
 @router.post("/scrape-events")
 async def trigger_scrape(
     _=Depends(get_current_admin),
@@ -249,10 +230,8 @@ async def trigger_scrape(
 ):
     try:
         events = await scrape_ai_events()
-
         # Replace all news events with fresh ones
         db.query(models.Event).filter(models.Event.event_type == "news").delete()
-
         added = 0
         for evt_data in events:
             if evt_data["event_type"] == "news":
@@ -267,12 +246,10 @@ async def trigger_scrape(
                     event = models.Event(**evt_data, is_active=True, created_at=datetime.now(timezone.utc))
                     db.add(event)
                     added += 1
-
         db.commit()
         return {"message": f"Scraped {len(events)} events, added/replaced {added} events"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scrape failed: {str(e)}")
-
 
 @router.get("/learnings", response_model=list[schemas.LearningOut])
 def list_learnings(
@@ -292,7 +269,6 @@ def list_learnings(
         result.append(item)
     return result
 
-
 @router.post("/learnings", response_model=schemas.LearningOut, status_code=201)
 def create_learning(
     data: schemas.LearningCreate,
@@ -311,7 +287,6 @@ def create_learning(
     db.refresh(learning)
     return learning
 
-
 @router.put("/learnings/{learning_id}", response_model=schemas.LearningOut)
 def update_learning(
     learning_id: str,
@@ -329,7 +304,6 @@ def update_learning(
     db.refresh(learning)
     return learning
 
-
 @router.delete("/learnings/{learning_id}")
 def delete_learning(
     learning_id: str,
@@ -344,7 +318,6 @@ def delete_learning(
     db.commit()
     return {"message": "Learning deactivated"}
 
-
 @router.get("/tool-usage")
 def get_tool_usage_analytics(
     _=Depends(get_current_admin),
@@ -355,7 +328,6 @@ def get_tool_usage_analytics(
         models.ToolUsage.tool_name,
         func.count(models.ToolUsage.id).label("count")
     ).group_by(models.ToolUsage.tool_name).order_by(func.count(models.ToolUsage.id).desc()).all()
-
     # Department breakdown by tool
     dept_usage = db.query(
         models.User.department,
@@ -363,12 +335,10 @@ def get_tool_usage_analytics(
     ).join(models.User, models.ToolUsage.user_id == models.User.id).group_by(
         models.User.department
     ).order_by(func.count(models.ToolUsage.id).desc()).all()
-
     return {
         "tool_usage": [{"tool_name": r.tool_name, "count": r.count} for r in usage_counts],
         "department_usage": [{"department": r.department or "Unknown", "count": r.count} for r in dept_usage]
     }
-
 
 @router.get("/learnings/{learning_id}/modules", response_model=list[schemas.LearningModuleOut])
 def list_learning_modules(
@@ -387,7 +357,6 @@ def list_learning_modules(
     )
     return modules
 
-
 @router.post("/learnings/{learning_id}/modules", response_model=schemas.LearningModuleOut, status_code=201)
 def create_learning_module(
     learning_id: str,
@@ -399,11 +368,9 @@ def create_learning_module(
     learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
     if not learning:
         raise HTTPException(status_code=404, detail="Parent Learning resource not found")
-
     # If the frontend passes `learning_id` inside the JSON body as well, 
     # we exclude it from the dump so it doesn't conflict with our path parameter.
     dump_data = data.model_dump(exclude={"learning_id"})
-
     module = models.LearningModule(
         id=str(uuid.uuid4()),
         learning_id=learning_id,
@@ -418,7 +385,6 @@ def create_learning_module(
     db.refresh(module)
     return module
 
-
 @router.post("/learnings/{learning_id}/modules/build", status_code=201)
 def build_learning_module(
     learning_id: str,
@@ -429,12 +395,10 @@ def build_learning_module(
     learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
     if not learning:
         raise HTTPException(status_code=404, detail="Learning not found")
-
     existing_count = db.query(models.LearningModule).filter(
         models.LearningModule.learning_id == learning_id,
         models.LearningModule.is_active == True,
     ).count()
-
     module = models.LearningModule(
         id=str(uuid.uuid4()),
         learning_id=learning_id,
@@ -452,7 +416,6 @@ def build_learning_module(
     db.refresh(module)
     return {"id": module.id, "message": "Module created"}
 
-
 @router.get("/learning-modules/{module_id}")
 def get_learning_module_admin(
     module_id: str,
@@ -464,7 +427,6 @@ def get_learning_module_admin(
         raise HTTPException(status_code=404, detail="Learning module not found")
     return module
 
-
 @router.put("/learning-modules/{module_id}", response_model=schemas.LearningModuleOut)
 def update_learning_module(
     module_id: str,
@@ -475,7 +437,6 @@ def update_learning_module(
     module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
     if not module:
         raise HTTPException(status_code=404, detail="Learning module not found")
-
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(module, field, value)
         
@@ -484,7 +445,6 @@ def update_learning_module(
     db.commit()
     db.refresh(module)
     return module
-
 
 @router.delete("/learning-modules/{module_id}")
 def delete_learning_module(
@@ -495,7 +455,6 @@ def delete_learning_module(
     module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
     if not module:
         raise HTTPException(status_code=404, detail="Learning module not found")
-
     # Soft delete
     module.is_active = False
     module.updated_at = datetime.now(timezone.utc)
@@ -531,10 +490,8 @@ def builder_sections_to_markdown(sections: list[schemas.BuilderSection]) -> str:
         heading = s.heading.strip() if s.heading else ""
         body = s.body.strip() if s.body else ""
         points = s.points or []
-
         if heading:
             md_parts.append(f"### {heading}")
-
         if t == "text" and body:
             md_parts.append(body)
             
@@ -554,9 +511,7 @@ def builder_sections_to_markdown(sections: list[schemas.BuilderSection]) -> str:
             
         elif t == "example" and body:
             md_parts.append(f"> 📝 **Example:** {body}")
-
     return "\n\n".join(md_parts).strip()
-
 
 @router.post("/learnings/{learning_id}/modules/build", response_model=schemas.LearningModuleOut, status_code=201)
 def build_learning_module(
@@ -571,15 +526,12 @@ def build_learning_module(
     learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
     if not learning:
         raise HTTPException(status_code=404, detail="Parent Learning resource not found")
-
     # 2. Determine the order for the new module (put it at the end)
     current_count = db.query(models.LearningModule).filter(
         models.LearningModule.learning_id == learning_id
     ).count()
-
     # 3. Convert sections to markdown
     compiled_markdown = builder_sections_to_markdown(data.sections)
-
     # 4. Create the module
     module = models.LearningModule(
         id=str(uuid.uuid4()),
@@ -603,14 +555,12 @@ def build_learning_module(
     return module
 
 # ── AI Tools ──────────────────────────────────────────────────────────────────
-
 @router.get("/ai-tools", response_model=List[schemas.AIToolOut])
 def list_ai_tools(
     _=Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     return db.query(models.AITool).filter(models.AITool.is_active == True).order_by(models.AITool.name).all()
-
 
 @router.post("/ai-tools", response_model=schemas.AIToolOut, status_code=201)
 def create_ai_tool(
@@ -623,7 +573,6 @@ def create_ai_tool(
     db.commit()
     db.refresh(tool)
     return tool
-
 
 @router.put("/ai-tools/{tool_id}", response_model=schemas.AIToolOut)
 def update_ai_tool(
@@ -642,7 +591,6 @@ def update_ai_tool(
     db.refresh(tool)
     return tool
 
-
 @router.delete("/ai-tools/{tool_id}")
 def delete_ai_tool(
     tool_id: int,
@@ -656,7 +604,6 @@ def delete_ai_tool(
     tool.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "AI tool deactivated"}
-
 
 @router.get("/events", response_model=List[schemas.EventOut])
 def get_events(
@@ -677,3 +624,574 @@ def get_events(
     events = query.order_by(models.Event.created_at.desc()).all()
     
     return events
+
+
+# ==============================================================================
+# HTMX + Jinja2 HTML Endpoints
+# (Under a /ui/ sub-path to cleanly separate them from the JSON API)
+# ==============================================================================
+
+@router.get("/ui", response_class=HTMLResponse)
+async def admin_ui_shell(request: Request, admin=Depends(get_current_admin)):
+    """Serves the main HTML Shell that holds the tabs."""
+    return templates.TemplateResponse("admin_base.html", {"request": request})
+
+
+@router.get("/ui/tabs/overview", response_class=HTMLResponse)
+async def html_tab_overview(
+    request: Request, 
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    total_users = db.query(models.User).filter(models.User.is_active == True).count()
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    active_today = db.query(models.User).filter(models.User.last_login >= today_start).count()
+    quizzes_today = db.query(models.QuizAttempt).filter(models.QuizAttempt.completed_at >= today_start).count()
+    total_events = db.query(models.Event).filter(models.Event.is_active == True).count()
+    
+    stats = {
+        "total_users": total_users, 
+        "quizzes": quizzes_today, 
+        "events": total_events, 
+        "active": active_today
+    }
+    return templates.TemplateResponse("overview.html", {"request": request, "stats": stats})
+
+
+@router.get("/ui/tabs/users", response_class=HTMLResponse)
+async def html_tab_users(
+    request: Request, 
+    q: str = "", 
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.User)
+    
+    # Simple search filtering equivalent to your frontend search logic
+    if q:
+        search_term = f"%{q.lower()}%"
+        query = query.filter(
+            func.lower(models.User.full_name).like(search_term) | 
+            func.lower(models.User.email).like(search_term)
+        )
+        
+    users = query.order_by(models.User.xp.desc()).all()
+    return templates.TemplateResponse("users.html", {"request": request, "users": users, "q": q})
+
+
+@router.get("/ui/users/form", response_class=HTMLResponse)
+async def html_user_form(
+    request: Request, 
+    user_id: int = None, 
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first() if user_id else None
+    return templates.TemplateResponse("user_modal.html", {"request": request, "user": user})
+
+
+@router.post("/ui/users", response_class=HTMLResponse)
+async def html_save_user(
+    request: Request,
+    user_id: Optional[int] = Form(None),
+    full_name: str = Form(...),
+    email: str = Form(...),
+    department: str = Form(""),
+    is_admin: bool = Form(False),
+    xp: int = Form(0),
+    level: int = Form(1),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    if user_id:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user:
+            user.full_name = full_name
+            user.email = email
+            user.department = department
+            user.is_admin = is_admin
+            user.xp = max(0, xp)
+            user.level = max(1, level)
+    else:
+        user = models.User(
+            full_name=full_name,
+            email=email,
+            department=department,
+            is_admin=is_admin,
+            xp=xp,
+            level=level,
+            is_active=True
+        )
+        db.add(user)
+        
+    db.commit()
+    
+    # Re-fetch users and return the updated table template directly
+    users = db.query(models.User).order_by(models.User.xp.desc()).all()
+    response = templates.TemplateResponse("users.html", {"request": request, "users": users, "q": ""})
+    
+    # Trigger JS events for UX via HTMX response headers
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "User saved successfully!"}'
+    return response
+
+
+@router.delete("/ui/users/{user_id}", response_class=HTMLResponse)
+async def html_delete_user(
+    user_id: int, 
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    if user_id == admin.id:
+        # Returning a 400 will cause HTMX to trigger an error event
+        raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
+        
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.is_active = False # Match your JSON API soft-delete logic
+        db.commit()
+    
+    # Returning an empty HTML string tells HTMX to remove the target element
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "User deleted!"}'
+    return response
+
+
+# ── Learnings HTMX ────────────────────────────────────────────────────────────
+
+@router.get("/ui/tabs/learnings", response_class=HTMLResponse)
+async def html_tab_learnings(
+    request: Request,
+    q: str = "",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    query = (
+        db.query(models.Learning)
+        .options(joinedload(models.Learning.modules))
+        .filter(models.Learning.is_active == True)
+    )
+    if q:
+        t = f"%{q.lower()}%"
+        query = query.filter(
+            func.lower(models.Learning.title).like(t) |
+            func.lower(models.Learning.category).like(t)
+        )
+    learnings = query.order_by(models.Learning.created_at.desc()).all()
+    for lr in learnings:
+        lr.module_count = sum(1 for m in lr.modules if m.is_active)
+    return templates.TemplateResponse("learnings.html", {"request": request, "learnings": learnings, "q": q})
+
+
+@router.get("/ui/learnings/form", response_class=HTMLResponse)
+async def html_learning_form(
+    request: Request,
+    learning_id: Optional[str] = None,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first() if learning_id else None
+    return templates.TemplateResponse("learning_modal.html", {"request": request, "learning": learning})
+
+
+def _learnings_list(db):
+    rows = (
+        db.query(models.Learning)
+        .options(joinedload(models.Learning.modules))
+        .filter(models.Learning.is_active == True)
+        .order_by(models.Learning.created_at.desc())
+        .all()
+    )
+    for lr in rows:
+        lr.module_count = sum(1 for m in lr.modules if m.is_active)
+    return rows
+
+
+@router.post("/ui/learnings", response_class=HTMLResponse)
+async def html_create_learning(
+    request: Request,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    lr_type: Optional[str] = Form(None),
+    level: int = Form(1),
+    estimated_duration_min: Optional[int] = Form(None),
+    xp_reward: int = Form(0),
+    is_mandatory: bool = Form(False),
+    tags: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = models.Learning(
+        id=str(uuid.uuid4()),
+        title=title,
+        description=description or None,
+        category=category or None,
+        type=lr_type or None,
+        level=level,
+        estimated_duration_min=estimated_duration_min,
+        xp_reward=xp_reward,
+        is_mandatory=is_mandatory,
+        tags=tags or None,
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(learning)
+    db.commit()
+    response = templates.TemplateResponse("learnings.html", {"request": request, "learnings": _learnings_list(db), "q": ""})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Learning created!"}'
+    return response
+
+
+@router.put("/ui/learnings/{learning_id}", response_class=HTMLResponse)
+async def html_update_learning_ui(
+    request: Request,
+    learning_id: str,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    lr_type: Optional[str] = Form(None),
+    level: int = Form(1),
+    estimated_duration_min: Optional[int] = Form(None),
+    xp_reward: int = Form(0),
+    is_mandatory: bool = Form(False),
+    tags: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    lr = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not lr:
+        raise HTTPException(status_code=404, detail="Not found")
+    lr.title = title
+    lr.description = description or None
+    lr.category = category or None
+    lr.type = lr_type or None
+    lr.level = level
+    lr.estimated_duration_min = estimated_duration_min
+    lr.xp_reward = xp_reward
+    lr.is_mandatory = is_mandatory
+    lr.tags = tags or None
+    lr.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    response = templates.TemplateResponse("learnings.html", {"request": request, "learnings": _learnings_list(db), "q": ""})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Learning updated!"}'
+    return response
+
+
+@router.delete("/ui/learnings/{learning_id}", response_class=HTMLResponse)
+async def html_delete_learning_ui(
+    learning_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    lr = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if lr:
+        lr.is_active = False
+        lr.updated_at = datetime.now(timezone.utc)
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Learning deactivated"}'
+    return response
+
+
+@router.get("/ui/learnings/{learning_id}/modules", response_class=HTMLResponse)
+async def html_learning_modules_modal(
+    request: Request,
+    learning_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    modules = (
+        db.query(models.LearningModule)
+        .filter(models.LearningModule.learning_id == learning_id, models.LearningModule.is_active == True)
+        .order_by(models.LearningModule.order.asc())
+        .all()
+    )
+    return templates.TemplateResponse("modules_modal.html", {"request": request, "modules": modules, "learning_id": learning_id})
+
+
+@router.delete("/ui/learning-modules/{module_id}", response_class=HTMLResponse)
+async def html_delete_module_ui(
+    module_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    module = db.query(models.LearningModule).filter(models.LearningModule.id == module_id).first()
+    if module:
+        module.is_active = False
+        module.updated_at = datetime.now(timezone.utc)
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Module deleted"}'
+    return response
+
+
+# ── Events HTMX ───────────────────────────────────────────────────────────────
+
+@router.get("/ui/tabs/events", response_class=HTMLResponse)
+async def html_tab_events(
+    request: Request,
+    q: str = "",
+    type_filter: str = "all",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.Event).filter(
+        models.Event.is_active == True,
+        models.Event.event_type.in_(["workshop", "webinar"]),
+    )
+    if type_filter != "all":
+        query = query.filter(models.Event.event_type == type_filter)
+    if q:
+        query = query.filter(func.lower(models.Event.title).like(f"%{q.lower()}%"))
+    events = query.order_by(models.Event.created_at.desc()).all()
+    return templates.TemplateResponse("events.html", {"request": request, "events": events, "q": q, "type_filter": type_filter})
+
+
+@router.get("/ui/events/form", response_class=HTMLResponse)
+async def html_event_form(
+    request: Request,
+    event_id: Optional[int] = None,
+    event_type: str = "workshop",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first() if event_id else None
+    if event:
+        event_type = event.event_type
+    return templates.TemplateResponse("event_form.html", {"request": request, "event": event, "event_type": event_type})
+
+
+def _events_list(db):
+    return (
+        db.query(models.Event)
+        .filter(models.Event.is_active == True, models.Event.event_type.in_(["workshop", "webinar"]))
+        .order_by(models.Event.created_at.desc())
+        .all()
+    )
+
+
+@router.post("/ui/events", response_class=HTMLResponse)
+async def html_create_event_ui(
+    request: Request,
+    event_type: str = Form(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    organizer: Optional[str] = Form(None),
+    speaker: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    event_format: Optional[str] = Form(None),
+    event_date: Optional[str] = Form(None),
+    event_time: Optional[str] = Form(None),
+    duration_minutes: Optional[int] = Form(None),
+    xp_reward: int = Form(0),
+    source_url: Optional[str] = Form(None),
+    registration_url: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    event = models.Event(
+        event_type=event_type,
+        title=title,
+        description=description or None,
+        organizer=organizer or None,
+        speaker=speaker or None,
+        location=location or None,
+        format=event_format or None,
+        event_date=event_date or None,
+        event_time=event_time or None,
+        duration_minutes=duration_minutes,
+        xp_reward=xp_reward,
+        source_url=source_url or None,
+        registration_url=registration_url or None,
+        tags=tags or None,
+        is_active=True,
+        registered_count=0,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(event)
+    db.commit()
+    response = templates.TemplateResponse("events.html", {"request": request, "events": _events_list(db), "q": "", "type_filter": "all"})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Event created!"}'
+    return response
+
+
+@router.put("/ui/events/{event_id}", response_class=HTMLResponse)
+async def html_update_event_ui(
+    request: Request,
+    event_id: int,
+    event_type: str = Form(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    organizer: Optional[str] = Form(None),
+    speaker: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    event_format: Optional[str] = Form(None),
+    event_date: Optional[str] = Form(None),
+    event_time: Optional[str] = Form(None),
+    duration_minutes: Optional[int] = Form(None),
+    xp_reward: int = Form(0),
+    source_url: Optional[str] = Form(None),
+    registration_url: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Not found")
+    ev.title = title
+    ev.description = description or None
+    ev.organizer = organizer or None
+    ev.speaker = speaker or None
+    ev.location = location or None
+    ev.format = event_format or None
+    ev.event_date = event_date or None
+    ev.event_time = event_time or None
+    ev.duration_minutes = duration_minutes
+    ev.xp_reward = xp_reward
+    ev.source_url = source_url or None
+    ev.registration_url = registration_url or None
+    ev.tags = tags or None
+    db.commit()
+    response = templates.TemplateResponse("events.html", {"request": request, "events": _events_list(db), "q": "", "type_filter": "all"})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Event updated!"}'
+    return response
+
+
+@router.delete("/ui/events/{event_id}", response_class=HTMLResponse)
+async def html_delete_event_ui(
+    event_id: int,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if ev:
+        ev.is_active = False
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Event deleted"}'
+    return response
+
+
+# ── AI Tools HTMX ─────────────────────────────────────────────────────────────
+
+@router.get("/ui/tabs/ai-tools", response_class=HTMLResponse)
+async def html_tab_ai_tools(
+    request: Request,
+    q: str = "",
+    tool_type: str = "all",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.AITool).filter(models.AITool.is_active == True)
+    if tool_type == "enterprise":
+        query = query.filter(models.AITool.is_enterprise == True)
+    elif tool_type == "free":
+        query = query.filter(models.AITool.is_enterprise == False)
+    if q:
+        t = f"%{q.lower()}%"
+        query = query.filter(
+            func.lower(models.AITool.name).like(t) |
+            func.lower(models.AITool.category).like(t) |
+            func.lower(models.AITool.tags).like(t)
+        )
+    tools = query.order_by(models.AITool.name).all()
+    return templates.TemplateResponse("admin_ai_tools.html", {"request": request, "tools": tools, "q": q, "tool_type": tool_type})
+
+
+@router.get("/ui/ai-tools/form", response_class=HTMLResponse)
+async def html_ai_tool_form(
+    request: Request,
+    tool_id: Optional[int] = None,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = db.query(models.AITool).filter(models.AITool.id == tool_id).first() if tool_id else None
+    return templates.TemplateResponse("ai_tool_modal.html", {"request": request, "tool": tool})
+
+
+def _tools_list(db):
+    return db.query(models.AITool).filter(models.AITool.is_active == True).order_by(models.AITool.name).all()
+
+
+@router.post("/ui/ai-tools", response_class=HTMLResponse)
+async def html_create_ai_tool_ui(
+    request: Request,
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    provider: Optional[str] = Form(None),
+    emoji_logo: Optional[str] = Form(None),
+    url: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    is_enterprise: bool = Form(False),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = models.AITool(
+        name=name,
+        description=description or None,
+        category=category or None,
+        provider=provider or None,
+        emoji_logo=emoji_logo or None,
+        url=url or None,
+        tags=tags or None,
+        is_enterprise=is_enterprise,
+        is_active=True,
+    )
+    db.add(tool)
+    db.commit()
+    response = templates.TemplateResponse("ai_tools.html", {"request": request, "tools": _tools_list(db), "q": "", "tool_type": "all"})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Tool created!"}'
+    return response
+
+
+@router.put("/ui/ai-tools/{tool_id}", response_class=HTMLResponse)
+async def html_update_ai_tool_ui(
+    request: Request,
+    tool_id: int,
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    provider: Optional[str] = Form(None),
+    emoji_logo: Optional[str] = Form(None),
+    url: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    is_enterprise: bool = Form(False),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = db.query(models.AITool).filter(models.AITool.id == tool_id).first()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Not found")
+    tool.name = name
+    tool.description = description or None
+    tool.category = category or None
+    tool.provider = provider or None
+    tool.emoji_logo = emoji_logo or None
+    tool.url = url or None
+    tool.tags = tags or None
+    tool.is_enterprise = is_enterprise
+    tool.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    response = templates.TemplateResponse("ai_tools.html", {"request": request, "tools": _tools_list(db), "q": "", "tool_type": "all"})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Tool updated!"}'
+    return response
+
+
+@router.delete("/ui/ai-tools/{tool_id}", response_class=HTMLResponse)
+async def html_delete_ai_tool_ui(
+    tool_id: int,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tool = db.query(models.AITool).filter(models.AITool.id == tool_id).first()
+    if tool:
+        tool.is_active = False
+        tool.updated_at = datetime.now(timezone.utc)
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Tool deleted"}'
+    return response

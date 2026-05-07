@@ -1,0 +1,42 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">{{ 'Edit' if user else 'New' }} User</h3>
+
+    <form hx-post="/api/admin/ui/users"
+          hx-target="#users-tab-content"
+          hx-swap="outerHTML">
+      {% if user %}<input type="hidden" name="user_id" value="{{ user.id }}">{% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input name="full_name" required class="form-input" value="{{ user.full_name if user else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" required class="form-input" value="{{ user.email if user else '' }}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <input name="department" class="form-input" value="{{ user.department if user else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Level</label>
+          <input type="number" name="level" class="form-input" min="1" value="{{ user.level if user else 1 }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">XP</label>
+          <input type="number" name="xp" class="form-input" min="0" value="{{ user.xp if user else 0 }}">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:24px">
+          <input type="checkbox" name="is_admin" value="true" id="u-admin" {% if user and user.is_admin %}checked{% endif %} style="width:auto">
+          <label for="u-admin" class="form-label" style="margin:0">Admin Access</label>
+        </div>
+      </div>
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save User</button>
+      </div>
+    </form>
+  </div>
+</div>

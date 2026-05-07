@@ -11,6 +11,7 @@ import schemas
 from auth import get_current_user, get_current_admin, calculate_level
 from default_data.course_data import COURSES
 from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
 
 router = APIRouter(tags=["courses"])
 

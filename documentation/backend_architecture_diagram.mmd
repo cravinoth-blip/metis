@@ -1,0 +1,67 @@
+%%{init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': 'rgba(243, 177, 90, 1)',
+'primaryTextColor': '#000000ff',
+'primaryBorderColor': '#e45959ff'
+}
+}}%%
+flowchart TD
+    %% External Clients
+    UI[Frontend]
+
+    %% Backend Layer
+    subgraph Backend [Application Layer - FastAPI]
+        direction TB
+
+        %% API Routers
+        subgraph Routers [API Endpoints]
+            Auth["/api/auth<br/>Register, Login, JWT"]
+            Users["/api/users<br/>Profile, Stats, Log Usage"]
+            Quiz["/api/quiz<br/>List, Submit, History"]
+            Events["/api/events<br/>List, Register"]
+            Courses["/api/courses<br/>Modules, Completion"]
+            Tools["/api/ai-tools<br/>Catalogue"]
+            Admin["/api/admin<br/>CRUD, Analytics, Scrape"]
+        end
+
+        %% Background Tasks
+        Scraper["Event Scraper Background Task<br/>Runs every 6 hours"]
+
+        %% Security
+        Security[JWT Middleware & Role Validation]
+    end
+
+    %% Data Layer
+    subgraph DataLayer [Data Layer]
+        ORM[SQLAlchemy ORM]
+        DB[(PostgreSQL / SQLite)]
+    end
+
+    %% External Sources
+    ExtEvents[External Event Sources]
+
+    %% Connections
+    UI -->|HTTPS / Bearer Token| Security
+
+    Security --> Auth
+    Security --> Users
+    Security --> Quiz
+    Security --> Events
+    Security --> Courses
+    Security --> Tools
+    Security -->|Requires is_admin=true| Admin
+
+    Auth --> ORM
+    Users --> ORM
+    Quiz --> ORM
+    Events --> ORM
+    Courses --> ORM
+    Tools --> ORM
+    Admin --> ORM
+
+    Admin -.->|Triggers Manual Scrape| Scraper
+    Scraper -->|HTTP GET| ExtEvents
+    Scraper -->|Merge Data| ORM
+
+    ORM --> DB

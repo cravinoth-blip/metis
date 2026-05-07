@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Enterprise AI Tools</h2>
+
+{% for category, tools in enterprise_tools.items() %}
+  <h3>{{ category }}</h3>
+  <div class="tools-grid">
+  {% for t in tools %}
+    <div class="tool-card">
+      <div>{{ t.emoji_logo or "🔧" }}</div>
+      <strong>{{ t.name }}</strong>
+      <div>{{ t.provider }}</div>
+      <p>{{ t.description }}</p>
+      {% if t.url %}
+        <a href="{{ t.url }}" target="_blank">Open →</a>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+{% endfor %}
+
+<hr />
+
+<h2>Free AI Tools</h2>
+<div class="warning-box">
+  ⚠️ Personal or client data must not be used
+</div>
+
+{% for category, tools in free_tools.items() %}
+  <h3>{{ category }}</h3>
+  <div class="tools-grid">
+  {% for t in tools %}
+    <div class="tool-card">
+      <div>{{ t.emoji_logo or "🔧" }}</div>
+      <strong>{{ t.name }}</strong>
+      <p>{{ t.description }}</p>
+
+      
+  <button
+    class="btn btn-primary btn-sm"
+    hx-post="/api/ai-tools/log-usage/{{ t.id }}"
+    hx-trigger="click"
+    hx-swap="outerHTML"
+    hx-disabled-elt="this"
+  >
+    Log use (+{{ log_xp }} XP)
+  </button>
+
+    </div>
+  {% endfor %}
+  </div>
+{% endfor %}
+
+<script>
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".log-btn");
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+  const res = await fetch(`/api/ai-tools/log-usage/${id}`, { method: "POST" });
+
+  if (res.ok) {
+    btn.textContent = "✓ +" + {{ log_xp }} + " XP";
+    btn.disabled = true;
+  }
+});
+</script>
+
+{% endblock %}

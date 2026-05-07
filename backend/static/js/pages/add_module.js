@@ -1,6 +1,5 @@
 import { api } from '../api.js';
 
-// Helper function to dynamically load scripts if they aren't already loaded in your SPA
 function loadScript(src) {
     return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
@@ -16,9 +15,8 @@ function loadScript(src) {
 }
 
 export async function render(el) {
-    // --- 1. Dynamic URL Parsing ---
-    const urlParams = new URLSearchParams(window.location.hash.includes('?') 
-        ? window.location.hash.split('?')[1] 
+    const urlParams = new URLSearchParams(window.location.hash.includes('?')
+        ? window.location.hash.split('?')[1]
         : window.location.search
     );
     const learningId = urlParams.get('learning_id');
@@ -28,22 +26,60 @@ export async function render(el) {
         return;
     }
 
-    // --- 2. State Management ---
-    let moduleData = {
-        title: '',
-        duration: 10,
-        xp_reward: 50
-    };
+    let moduleData = { title: '', duration: 10, xp_reward: 50 };
 
-    // --- 3. Initial Layout Render ---
-    // We include the Quill CSS directly in the injected HTML
     el.innerHTML = `
         <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
-        
-        <div style="max-width:800px; margin:0 auto; padding-bottom:60px;">
+        <style>
+            #split-panels {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                align-items: start;
+            }
+            .split-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .split-panel-label {
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #64748b;
+            }
+            #editor-wrapper {
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+            }
+            #editor-container {
+                height: 480px;
+            }
+            #html-output {
+                height: 544px; /* matches toolbar (~42px) + editor (480px) + border (2px) */
+                margin: 0;
+                padding: 14px;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+                line-height: 1.6;
+                background: #0f172a;
+                color: #94a3b8;
+                border: 1px solid #1e293b;
+                border-radius: 8px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                box-sizing: border-box;
+            }
+        </style>
+
+        <div style="max-width:1300px; margin:0 auto; padding-bottom:60px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
                 <div>
-                    <h1 style="font-size:24px;margin-bottom:4px">Module Builder (Rich Text)</h1>
+                    <h1 style="font-size:24px;margin-bottom:4px">Module Builder</h1>
                     <p class="text-secondary">Adding new module to Learning ID: <code style="background:#f1f5f9;padding:2px 4px;border-radius:4px">${learningId}</code></p>
                 </div>
                 <div style="display:flex; gap:8px;">
@@ -67,93 +103,92 @@ export async function render(el) {
                 </div>
             </div>
 
-            <!-- Quill Editor Container -->
-            <div style="background: #fff; border-radius: 8px; margin-bottom: 24px;">
-                <label style="font-size:14px;font-weight:600;margin-bottom:8px;display:block;padding:0 4px;">Module Content</label>
-                <div id="editor-container" style="height: 400px; border-radius: 0 0 8px 8px;"></div>
+            <div id="split-panels">
+                <div class="split-panel">
+                    <span class="split-panel-label">Editor</span>
+                    <div id="editor-wrapper">
+                        <div id="editor-container"></div>
+                    </div>
+                </div>
+                <div class="split-panel">
+                    <span class="split-panel-label">HTML Output</span>
+                    <pre id="html-output"></pre>
+                </div>
             </div>
         </div>
     `;
 
-    // --- 4. Initialize Quill ---
-    // Ensure the script is loaded before trying to initialize Quill
     await loadScript('https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js');
 
-    const quill = new Quill(el.querySelector('#editor-container'), {
+    const quill = new window.Quill(el.querySelector('#editor-container'), {
         theme: 'snow',
         modules: {
             toolbar: [
-                [{ 'font': [] }, { 'size': [] }],
+                [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
                 ['bold', 'italic', 'underline', 'strike'],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'header': '1' }, { 'header': '2' }, 'blockquote', 'code-block'],
-                [{ 'list': 'ordered' }, { 'list': 'bullet'}],
+                [{ color: [] }, { background: [] }],
+                [{ script: 'sub' }, { script: 'super' }],
+                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                ['blockquote', 'code-block'],
+                [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+                [{ indent: '-1' }, { indent: '+1' }],
+                [{ align: [] }],
+                [{ direction: 'rtl' }],
                 ['link', 'image', 'video'],
                 ['clean']
             ]
         }
     });
 
-    // --- 5. Event Listeners & Logic ---
-    
-    // Update State
+    const htmlOutput = el.querySelector('#html-output');
+
+    quill.on('text-change', () => {
+        htmlOutput.textContent = quill.getSemanticHTML();
+    });
+
     el.querySelector('#mod-title').oninput = (e) => moduleData.title = e.target.value;
     el.querySelector('#mod-dur').oninput = (e) => moduleData.duration = parseInt(e.target.value) || 0;
     el.querySelector('#mod-xp').oninput = (e) => moduleData.xp_reward = parseInt(e.target.value) || 0;
 
-    // Preview Logic using your _metis.openModal system
     el.querySelector('#preview-module-btn').onclick = () => {
         const htmlContent = quill.getSemanticHTML();
-        
         const overlay = window._metis.openModal(`
-            <button class="modal-close" id="preview-close" style="position:absolute; right:16px; top:16px; border:none; background:none; cursor:pointer; font-size:18px;">✕</button>
+            <button class="modal-close" id="preview-close" style="position:absolute;right:16px;top:16px;border:none;background:none;cursor:pointer;font-size:18px;">✕</button>
             <div style="margin-bottom:24px;">
                 <div style="display:inline-block;padding:2px 8px;border-radius:12px;background:#e2e8f0;color:#475569;font-size:11px;font-weight:700;margin-bottom:8px;">PREVIEW</div>
                 <h2 style="margin-bottom:4px;font-size:24px">${moduleData.title || 'Untitled Module'}</h2>
-                <div class="text-sm text-secondary" style="color:#64748b;">⏱ ${moduleData.duration || 0} min · ${moduleData.xp_reward || 0} pts</div>
+                <div style="color:#64748b;font-size:13px;">⏱ ${moduleData.duration || 0} min · ${moduleData.xp_reward || 0} pts</div>
             </div>
-            
-            <!-- We apply the ql-editor class here so standard Quill CSS applies to the preview elements -->
-            <div class="ql-snow" style="border: none;">
-                <div class="ql-editor" style="padding: 0; min-height: auto; max-height:55vh; overflow-y:auto; line-height:1.7;">
+            <div class="ql-snow" style="border:none;">
+                <div class="ql-editor" style="padding:0;min-height:auto;max-height:55vh;overflow-y:auto;line-height:1.7;">
                     ${htmlContent || '<p style="color:#64748b;text-align:center;padding:40px;">Write some content to see the preview!</p>'}
                 </div>
             </div>
-            
             <div style="margin-top:20px;display:flex;justify-content:flex-end;">
-                <button id="preview-done-btn" class="btn btn-primary" style="padding:8px 16px; background:#0f172a; color:#fff; border:none; border-radius:6px; cursor:pointer;">Done</button>
+                <button id="preview-done-btn" class="btn btn-primary" style="padding:8px 16px;background:#0f172a;color:#fff;border:none;border-radius:6px;cursor:pointer;">Done</button>
             </div>
         `);
-
         const closePreview = () => overlay.remove();
         overlay.querySelector('#preview-close').onclick = closePreview;
         overlay.querySelector('#preview-done-btn').onclick = closePreview;
     };
 
-    // Save Logic
     el.querySelector('#save-module-btn').onclick = async () => {
         if (!moduleData.title) {
             window._metis.toast("Please enter a module title", "error");
             return;
         }
-
-        // Gather HTML content directly from Quill
-        const htmlContent = quill.getSemanticHTML();
-
         const cleanData = {
             title: moduleData.title,
             duration: moduleData.duration,
             xp_reward: moduleData.xp_reward,
-            html_content: htmlContent // Sending the raw HTML string directly to the backend
+            html_content: quill.getSemanticHTML()
         };
-
         try {
             const saveBtn = el.querySelector('#save-module-btn');
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
-            
             await api.post(`/admin/learnings/${learningId}/modules/build`, cleanData);
-            
             window._metis.toast("Module successfully added!", "success");
             window._metis.navigate('/admin');
         } catch (e) {

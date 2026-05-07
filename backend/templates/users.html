@@ -1,0 +1,47 @@
+<div id="users-tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search users&#8230;"
+           class="form-input search-input" style="max-width:300px"
+           hx-get="/api/admin/ui/tabs/users"
+           hx-target="#users-tab-content"
+           hx-swap="outerHTML"
+           hx-trigger="keyup changed delay:400ms">
+    <button class="btn btn-primary btn-sm"
+            hx-get="/api/admin/ui/users/form"
+            hx-target="#modal-container">+ New User</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="table">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Dept</th><th>XP</th><th>Level</th><th>Admin</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr id="user-row-{{ u.id }}">
+          <td>{{ u.full_name or u.username }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.department or '&#8212;' }}</td>
+          <td>{{ u.xp }}</td>
+          <td>{{ u.level }}</td>
+          <td>{{ '&#10003;' if u.is_admin else '' }}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/users/form?user_id={{ u.id }}"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Edit</button>
+            <button class="btn btn-danger btn-sm"
+                    hx-delete="/api/admin/ui/users/{{ u.id }}"
+                    hx-confirm="Delete this user?"
+                    hx-target="#user-row-{{ u.id }}"
+                    hx-swap="outerHTML">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:32px">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-sm text-secondary" style="margin-top:8px">{{ users|length }} user{{ 's' if users|length != 1 else '' }}</div>
+</div>
