@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -6,6 +9,9 @@ from database import get_db
 import models
 import schemas
 from auth import get_current_user, calculate_level
+from default_data.quiz_data import QUIZZES
+
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
 router = APIRouter(tags=["users"])
 
@@ -131,3 +137,55 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/me/ui/dashboard", response_class=HTMLResponse)
+def dashboard_ui(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    level, xp_to_next = calculate_level(current_user.xp)
+
+    quiz_count = db.query(models.QuizAttempt).filter(
+        models.QuizAttempt.user_id == current_user.id
+    ).count()
+
+    recent_attempts = (
+        db.query(models.QuizAttempt)
+        .filter(models.QuizAttempt.user_id == current_user.id)
+        .order_by(models.QuizAttempt.completed_at.desc())
+        .limit(6)
+        .all()
+    )
+    recent_activity = [
+        {
+            "quiz_title": QUIZZES.get(a.quiz_id, {}).get("title", a.quiz_id),
+            "xp_earned":  a.xp_earned,
+            "score_pct":  round(a.score_pct),
+        }
+        for a in recent_attempts
+    ]
+
+    all_attempts = db.query(models.QuizAttempt).filter(
+        models.QuizAttempt.user_id == current_user.id
+    ).all()
+    category_scores: dict[str, list[float]] = {}
+    for a in all_attempts:
+        cat = QUIZZES.get(a.quiz_id, {}).get("category")
+        if cat:
+            category_scores.setdefault(cat, []).append(a.score_pct)
+    skill_breakdown = {
+        cat: round(sum(scores) / len(scores))
+        for cat, scores in category_scores.items()
+    }
+
+    return _templates.TemplateResponse("dashboard.html", {
+        "request":        request,
+        "user":           current_user,
+        "level":          level,
+        "xp_to_next":     xp_to_next,
+        "quiz_count":     quiz_count,
+        "recent_activity": recent_activity,
+        "skill_breakdown": skill_breakdown,
+    })

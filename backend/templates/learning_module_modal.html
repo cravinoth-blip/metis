@@ -1,0 +1,40 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close"
+            onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+
+    <h2 style="margin-bottom:4px;font-size:17px">{{ module.title }}</h2>
+    {% if module.duration_min %}
+    <div class="text-sm text-secondary" style="margin-bottom:16px">
+      &#9203; {{ module.duration_min }} min &middot; {{ module.xp_reward or 0 }} XP
+    </div>
+    {% endif %}
+
+    <div style="font-size:14px;line-height:1.7;max-height:55vh;overflow-y:auto;padding-right:8px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      {{ content_html | safe }}
+      {% if module.content_url %}
+      <div style="margin-top:20px">
+        <a href="{{ module.content_url }}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">
+          Open Resource &#8599;
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
+      {% if completed %}
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;background:#dcfce7;color:#15803d;padding:8px 16px;border-radius:8px;font-weight:600;font-size:14px">
+        &#10003; Module Completed
+      </div>
+      {% else %}
+      <span id="timer-msg" class="text-sm text-secondary">Read for 5s to complete&hellip;</span>
+      <button id="complete-btn" class="btn btn-primary" style="margin-left:auto" disabled
+              hx-post="/api/courses/ui/learnings/{{ learning_id }}/modules/{{ module.id }}/complete"
+              hx-target="#learning-container"
+              hx-swap="outerHTML">
+        Mark complete
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>

@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+import re
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timezone
 from typing import List
@@ -16,6 +20,225 @@ class ModuleReorderRequest(BaseModel):
     order: List[str]
 
 router = APIRouter(tags=["courses"])
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+
+
+def _parse_markdown(text: str) -> str:
+    """Lightweight markdown → HTML, mirroring the JS parseMarkdown."""
+    if not text:
+        return ''
+    text = re.sub(r'^### (.+)$', r'<h4 style="margin:20px 0 8px;font-size:15px;font-weight:700">\1</h4>', text, flags=re.MULTILINE)
+    text = re.sub(r'^## (.+)$',  r'<h3 style="margin:24px 0 10px;font-size:17px;font-weight:700">\1</h3>', text, flags=re.MULTILINE)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'^> ?(.+)$', r'<div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">\1</div>', text, flags=re.MULTILINE)
+    def _list_block(m):
+        items = ''.join(
+            f'<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">{re.sub(r"^[ \t]*- ", "", ln)}</li>'
+            for ln in m.group(0).strip().splitlines() if ln.strip()
+        )
+        return (
+            '<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0">'
+            '<div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px">Key Points</div>'
+            f'<ul style="margin:0;color:#14532d;line-height:1.6">{items}</ul></div>'
+        )
+    text = re.sub(r'(^[ \t]*- .+(\n|$))+', _list_block, text, flags=re.MULTILINE)
+    text = text.replace('\n\n', '</p><p style="margin-bottom:12px;color:var(--text-secondary)">')
+    return f'<div style="margin-bottom:16px"><p style="margin-bottom:12px;color:var(--text-secondary)">{text}</p></div>'
+
+
+def _render_module_content(content_text: str) -> str:
+    if not content_text:
+        return '<p style="color:var(--text-secondary)">No content available.</p>'
+    try:
+        parsed = json.loads(content_text)
+        if isinstance(parsed, list):
+            parts = []
+            for s in parsed:
+                t      = (s.get('type') or '').lower()
+                heading = s.get('heading') or ''
+                body   = s.get('body') or s.get('content') or s.get('text') or ''
+                points = s.get('points') or []
+                if heading:
+                    parts.append(f'<h4 style="margin:20px 0 8px;font-size:15px;font-weight:700">{heading}</h4>')
+                if t == 'key_points' and points:
+                    items = ''.join(f'<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">{p}</li>' for p in points if str(p).strip())
+                    parts.append(f'<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0"><div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px">Key Points</div><ul style="margin:0;color:#14532d;line-height:1.6">{items}</ul></div>')
+                elif t == 'steps' and points:
+                    items = ''.join(f'<li style="margin-bottom:8px">{p}</li>' for p in points if str(p).strip())
+                    parts.append(f'<ol style="margin:12px 0 12px 24px;color:var(--text-secondary)">{items}</ol>')
+                elif t == 'tip' and body:
+                    parts.append(f'<div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">&#128161; <strong>Tip:</strong> {body}</div>')
+                elif t == 'warning' and body:
+                    parts.append(f'<div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">&#9888; <strong>Warning:</strong> {body}</div>')
+                elif t == 'example' and body:
+                    parts.append(f'<div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">&#128221; <strong>Example:</strong> {body}</div>')
+                elif body:
+                    parts.append(f'<p style="margin-bottom:12px;color:var(--text-secondary)">{body}</p>')
+            return ''.join(parts) or '<p style="color:var(--text-secondary)">No content.</p>'
+    except (ValueError, TypeError):
+        pass
+    return _parse_markdown(content_text)
+
+
+def _learning_rows(user_id: int, db: Session, q: str = '') -> list:
+    rows = (
+        db.query(models.Learning)
+        .options(joinedload(models.Learning.modules))
+        .filter(models.Learning.is_active == True)
+        .order_by(models.Learning.title)
+        .all()
+    )
+    result = []
+    for lr in rows:
+        active_mods = sorted([m for m in lr.modules if m.is_active], key=lambda m: m.order)
+        completed   = _get_user_completed_modules(user_id, lr.id, db)
+        total       = len(active_mods)
+        pct         = _calc_progress(len(completed), total)
+        result.append({
+            'id': lr.id, 'title': lr.title, 'description': lr.description,
+            'type': lr.type, 'progress_pct': pct, 'modules_completed': completed,
+            'total_modules': total, 'is_completed': pct >= 100,
+        })
+    if q:
+        ql = q.lower()
+        result = [l for l in result if ql in l['title'].lower() or ql in (l['description'] or '').lower()]
+    return result
+
+
+# ── Learning UI HTMX ──────────────────────────────────────────────────────────
+
+@router.get("/ui/learnings", response_class=HTMLResponse)
+def ui_learning_list(
+    request: Request,
+    q: str = '',
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    learnings = _learning_rows(current_user.id, db, q)
+    return _templates.TemplateResponse("learning_list.html", {"request": request, "learnings": learnings, "q": q})
+
+
+@router.get("/ui/learnings/{learning_id}/modules", response_class=HTMLResponse)
+def ui_learning_modules(
+    request: Request,
+    learning_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    modules = (
+        db.query(models.LearningModule)
+        .filter(models.LearningModule.learning_id == learning_id, models.LearningModule.is_active == True)
+        .order_by(models.LearningModule.order.asc())
+        .all()
+    )
+    completed = _get_user_completed_modules(current_user.id, learning_id, db)
+    return _templates.TemplateResponse("learning_modules.html", {
+        "request": request, "modules": modules,
+        "completed_indices": completed, "learning_id": learning_id,
+    })
+
+
+@router.get("/ui/modules/{module_id}", response_class=HTMLResponse)
+def ui_module_modal(
+    request: Request,
+    module_id: str,
+    learning_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    module = db.query(models.LearningModule).filter(
+        models.LearningModule.id == module_id,
+        models.LearningModule.is_active == True,
+    ).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    completed = db.query(models.ModuleCompletion).filter(
+        models.ModuleCompletion.user_id == current_user.id,
+        models.ModuleCompletion.learning_id == learning_id,
+        models.ModuleCompletion.module_index == module.order,
+    ).first() is not None
+    return _templates.TemplateResponse("learning_module_modal.html", {
+        "request": request,
+        "module": module,
+        "learning_id": learning_id,
+        "completed": completed,
+        "content_html": _render_module_content(module.content_text),
+    })
+
+
+@router.post("/ui/learnings/{learning_id}/modules/{module_id}/complete", response_class=HTMLResponse)
+def ui_complete_module(
+    request: Request,
+    learning_id: str,
+    module_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    import json as _json
+    current_user = db.merge(current_user)
+    module = db.query(models.LearningModule).filter(
+        models.LearningModule.id == module_id,
+        models.LearningModule.learning_id == learning_id,
+    ).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    existing = db.query(models.ModuleCompletion).filter(
+        models.ModuleCompletion.user_id == current_user.id,
+        models.ModuleCompletion.learning_id == learning_id,
+        models.ModuleCompletion.module_index == module.order,
+    ).first()
+
+    xp_earned = 0
+    if not existing:
+        # Use xp_reward if set, otherwise default to 10 (same as the JSON endpoint)
+        xp_earned = getattr(module, 'xp_reward', None) or 10
+
+        # Count BEFORE adding so autoflush doesn't double-count
+        total = db.query(models.LearningModule).filter(
+            models.LearningModule.learning_id == learning_id,
+            models.LearningModule.is_active == True,
+        ).count()
+        done_before = db.query(models.ModuleCompletion).filter(
+            models.ModuleCompletion.user_id == current_user.id,
+            models.ModuleCompletion.learning_id == learning_id,
+        ).count()
+        progress = _calc_progress(done_before + 1, total)
+
+        db.add(models.ModuleCompletion(
+            user_id=current_user.id, learning_id=learning_id,
+            module_index=module.order, xp_earned=xp_earned,
+            completed_at=datetime.now(timezone.utc),
+        ))
+        current_user.xp += xp_earned
+        new_level, _ = calculate_level(current_user.xp)
+        current_user.level = new_level
+        lp = db.query(models.LearningProgress).filter(
+            models.LearningProgress.user_id == current_user.id,
+            models.LearningProgress.learning_id == learning_id,
+        ).first()
+        if lp:
+            lp.progress_pct = progress
+            if progress >= 100:
+                lp.completed = True
+                lp.completed_at = datetime.now(timezone.utc)
+        else:
+            db.add(models.LearningProgress(
+                user_id=current_user.id, learning_id=learning_id,
+                progress_pct=progress, completed=(progress >= 100),
+            ))
+        db.commit()
+        db.refresh(current_user)
+
+    learnings = _learning_rows(current_user.id, db)
+    toast = f"Module complete! +{xp_earned} XP" if xp_earned else "Already completed"
+    response = _templates.TemplateResponse("learning_list.html", {"request": request, "learnings": learnings, "q": ""})
+    response.headers["HX-Trigger"] = _json.dumps({
+        "closeModal": True,
+        "showToast": toast,
+        "updateXP": {"xp": current_user.xp, "level": current_user.level},
+    })
+    return response
 
 def _get_user_completed_modules(user_id: int, learning_id: str, db: Session) -> List[int]:
     """Return list of module indices the user has completed for a learning resource."""
@@ -235,7 +458,7 @@ def complete_learning_module(
         learning_id=learning_id,
         module_index=module.order,
         xp_earned=xp_to_add,
-        completed_at=datetime.utcnow()
+        completed_at=datetime.now(timezone.utc)
     )
     db.add(completion)
 
@@ -266,7 +489,7 @@ def complete_learning_module(
         lp.progress_pct = progress
         if progress >= 100:
             lp.completed = True
-            lp.completed_at = datetime.utcnow()
+            lp.completed_at = datetime.now(timezone.utc)
     else:
         db.add(models.LearningProgress(
             user_id=current_user.id,

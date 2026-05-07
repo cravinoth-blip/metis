@@ -139,6 +139,18 @@ async def admin_page(request: Request):
 async def aitools_page(request: Request):
     return _templates.TemplateResponse("aitools_page.html", {"request": request, "active_page": "aitools"})
 
+@app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard_page(request: Request):
+    return _templates.TemplateResponse("dashboard_page.html", {"request": request, "active_page": "dashboard"})
+
+@app.get("/skillgames", response_class=HTMLResponse, include_in_schema=False)
+async def skillgames_page(request: Request):
+    return _templates.TemplateResponse("skillgames_page.html", {"request": request, "active_page": "skillgames"})
+
+@app.get("/learning", response_class=HTMLResponse, include_in_schema=False)
+async def learning_page(request: Request):
+    return _templates.TemplateResponse("learning_page.html", {"request": request, "active_page": "learning"})
+
 @app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
 async def serve_spa(request: Request, full_path: str):
     return _templates.TemplateResponse("index.html", {"request": request})

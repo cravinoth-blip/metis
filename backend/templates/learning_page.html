@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning &mdash; Metis</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    #modal-container .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    #modal-container .modal {
+      background: #fff; border-radius: 12px; padding: 24px;
+      width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none; font-size: 1.1rem; cursor: pointer;
+      color: var(--text-secondary, #6b7280);
+    }
+    #toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast { padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; animation: fadein 0.2s; }
+    .toast-success { background: #dcfce7; color: #166534; }
+    .toast-error   { background: #fee2e2; color: #991b1b; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div id="app">
+    {% include 'sidebar.html' %}
+
+    <div id="main-wrapper">
+      <header id="topbar">
+        <h1 id="page-title">Learning</h1>
+        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
+          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
+          <div class="avatar" id="topbar-avatar">??</div>
+        </div>
+      </header>
+
+      <main id="content" style="overflow-y:auto">
+        <div id="learning-container"
+             hx-get="/api/courses/ui/learnings"
+             hx-trigger="load"
+             hx-swap="outerHTML">
+          <div class="loading" style="padding:24px">Loading&hellip;</div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-container"></div>
+
+  <script>
+    const token = localStorage.getItem('metis_token');
+    const user  = JSON.parse(localStorage.getItem('metis_user') || '{}');
+    if (!token) { location.href = '/login'; }
+
+    document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
+    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
+    document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
+    document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
+    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
+
+    if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
+
+    document.getElementById('admin-logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('metis_token');
+      localStorage.removeItem('metis_user');
+      location.href = '/login';
+    });
+
+    document.body.addEventListener('htmx:configRequest', evt => {
+      evt.detail.headers['Authorization'] = `Bearer ${token}`;
+    });
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    document.body.addEventListener('showToast',  evt => showToast(evt.detail.value || evt.detail));
+    document.body.addEventListener('closeModal', ()  => { document.getElementById('modal-container').innerHTML = ''; });
+    document.body.addEventListener('updateXP',   evt => {
+      const { xp, level } = evt.detail;
+      document.getElementById('topbar-xp').textContent  = `⚡ ${xp} XP`;
+      document.getElementById('sidebar-xp').textContent = `${xp} XP · Lv ${level}`;
+      const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
+      u.xp = xp; u.level = level;
+      localStorage.setItem('metis_user', JSON.stringify(u));
+    });
+
+    // ── Expand / collapse module list ──────────────────────────────────────────
+    function toggleModules(lrId, header) {
+      const el    = document.getElementById('mods-' + lrId);
+      const arrow = header.querySelector('.lr-arrow');
+      if (el.dataset.loaded) {
+        const visible = el.style.display !== 'none';
+        el.style.display = visible ? 'none' : '';
+        if (arrow) arrow.textContent = visible ? '▼' : '▲';
+      } else {
+        el.style.display = '';
+        if (arrow) arrow.textContent = '▲';
+      }
+    }
+
+    // Mark modules div as loaded after HTMX swap; start timer when modal opens
+    document.body.addEventListener('htmx:afterSwap', evt => {
+      if (evt.target.id && evt.target.id.startsWith('mods-')) {
+        evt.target.dataset.loaded = '1';
+      }
+      if (evt.target.id === 'modal-container') {
+        const btn = document.getElementById('complete-btn');
+        if (btn) startTimer(btn);
+      }
+    });
+
+    function startTimer(btn) {
+      const msg = document.getElementById('timer-msg');
+      let left = 5;
+      const t = setInterval(() => {
+        left--;
+        if (left > 0 && msg) {
+          msg.textContent = `Read for ${left}s to complete…`;
+        } else {
+          clearInterval(t);
+          if (msg) msg.textContent = '';
+          btn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    document.body.addEventListener('htmx:responseError', () => showToast('An error occurred.', 'error'));
+  </script>
+</body>
+</html>

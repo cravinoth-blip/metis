@@ -21,18 +21,12 @@ export function openModal(html) {
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 const ROUTES = {
-  '/dashboard':       () => import('./pages/dashboard.js'),
-  '/skillgames':      () => import('./pages/skillgames.js'),
-  '/learning':        () => import('./pages/learning.js'),
   '/whatson':         () => import('./pages/whatson.js'),
   '/add-module':      () => import('./pages/add_module.js'),
   '/edit-module':     () => import('./pages/edit_module.js'),
 };
 
 const TITLES = {
-  '/dashboard':       'Dashboard',
-  '/skillgames':      'Skill Games',
-  '/learning':        'Learning',
   '/whatson':         "What's On",
   '/add-module':      'Module Builder',
   '/edit-module':     'Edit Module',
@@ -42,7 +36,8 @@ const TITLES = {
 async function navigate(path) {
   if (!localStorage.getItem('metis_token')) { location.href = '/login'; return; }
 
-  if (path === '/') path = '/dashboard';
+  // Server-rendered pages — hand off to the browser
+  if (path === '/' || path === '/dashboard') { location.href = '/dashboard'; return; }
 
   // Strip query string for route/title lookup, keep full path for history
   const routeKey = path.split('?')[0];
@@ -57,7 +52,7 @@ async function navigate(path) {
   content.innerHTML = '<div class="loading">Loading…</div>';
 
   const loader = ROUTES[routeKey];
-  if (!loader) { navigate('/dashboard'); return; }
+  if (!loader) { location.href = path; return; }
 
   history.pushState({}, '', path);
 

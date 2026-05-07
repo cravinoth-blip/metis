@@ -1,0 +1,64 @@
+<div id="learning-container" style="padding:24px">
+
+  <div style="margin-bottom:20px">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search resources&hellip;"
+           class="form-input" style="max-width:360px"
+           hx-get="/api/courses/ui/learnings"
+           hx-target="#learning-container"
+           hx-swap="outerHTML"
+           hx-trigger="keyup changed delay:400ms">
+  </div>
+
+  {% set type_bg    = {'article':'#e0f2fe','video':'#fce7f3','course':'#ede9fe','tutorial':'#dcfce7'} %}
+  {% set type_color = {'article':'#0369a1','video':'#9d174d','course':'#6d28d9','tutorial':'#15803d'} %}
+
+  {% if learnings %}
+    {% for lr in learnings %}
+    <div class="course-card" style="margin-bottom:12px">
+
+      <div class="course-header"
+           style="cursor:pointer"
+           onclick="toggleModules('{{ lr.id }}', this)"
+           hx-get="/api/courses/ui/learnings/{{ lr.id }}/modules"
+           hx-target="#mods-{{ lr.id }}"
+           hx-swap="innerHTML"
+           hx-trigger="click once">
+
+        <div style="flex:1">
+          {% if lr.type %}
+          <span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
+                       background:{{ type_bg.get(lr.type, '#f1f5f9') }};
+                       color:{{ type_color.get(lr.type, '#64748b') }};margin-bottom:8px">{{ lr.type }}</span>
+          {% endif %}
+
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">
+            {{ lr.title }}
+            {% if lr.is_completed %}
+            <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;margin-left:8px">&#10003; Completed</span>
+            {% endif %}
+          </div>
+
+          <div class="text-sm text-secondary">{{ lr.description or '' }}</div>
+
+          <div style="margin-top:12px;max-width:240px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span>Progress</span><span>{{ lr.progress_pct }}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:{{ lr.progress_pct }}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <span class="lr-arrow" style="font-size:18px;margin-left:12px">&#9660;</span>
+      </div>
+
+      <div id="mods-{{ lr.id }}" style="display:none;border-top:1px solid var(--border)"></div>
+
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No resources found.</div>
+  {% endif %}
+
+</div>
