@@ -8,16 +8,15 @@ Fields mirror the Webinar model:
   category         - topic area
   tags             - comma-separated tag string
   speaker          - presenter name(s)
+  organizer        - the department or group hosting the event
   platform         - Zoom | Teams | YouTube Live | etc.
   duration_minutes - expected run time
   registration_url - link to register or join (None = internal booking)
-  capacity         - max attendees (None = unlimited)
   xp_reward        - XP awarded on completion
   start_date       - ISO datetime string or None (set per-deployment)
 """
 
 WEBINARS = {
-
     # ─────────────────────────────────────────────────────────────────────────
     # AI TOOLS & PRODUCTIVITY
     # ─────────────────────────────────────────────────────────────────────────
@@ -32,14 +31,13 @@ WEBINARS = {
         "category": "AI Tools",
         "tags": "Claude, AI, Pharma, Regulatory, Beginner",
         "speaker": "AI Enablement Team",
+        "organizer": "AI Innovation Hub",
         "platform": "Zoom",
         "duration_minutes": 60,
         "registration_url": None,
-        "capacity": None,
         "xp_reward": 150,
         "start_date": None,
     },
-
     "chatgpt-vs-claude-deep-dive": {
         "id": "chatgpt-vs-claude-deep-dive",
         "title": "ChatGPT vs Claude: Choosing the Right Model for Your Task",
@@ -51,14 +49,13 @@ WEBINARS = {
         "category": "AI Tools",
         "tags": "ChatGPT, Claude, LLM, Comparison, Productivity",
         "speaker": "Speaker1",
+        "organizer": "Digital Transformation Office",
         "platform": "Teams",
         "duration_minutes": 45,
         "registration_url": None,
-        "capacity": 200,
         "xp_reward": 100,
         "start_date": None,
     },
-
     # ─────────────────────────────────────────────────────────────────────────
     # REGULATORY & COMPLIANCE
     # ─────────────────────────────────────────────────────────────────────────
@@ -73,14 +70,13 @@ WEBINARS = {
         "category": "AI Governance",
         "tags": "EU AI Act, Compliance, Regulation, Risk, Pharma",
         "speaker": "Legal & Compliance",
+        "organizer": "Corporate Legal & Risk Management",
         "platform": "Zoom",
         "duration_minutes": 60,
         "registration_url": None,
-        "capacity": None,
         "xp_reward": 200,
         "start_date": None,
     },
-
     # ─────────────────────────────────────────────────────────────────────────
     # MEDICAL WRITING
     # ─────────────────────────────────────────────────────────────────────────
@@ -95,14 +91,13 @@ WEBINARS = {
         "category": "Medical Writing",
         "tags": "Adverse Events, Narratives, Medical Writing, QC, Pharmacovigilance",
         "speaker": "Medical Writing Centre of Excellence",
+        "organizer": "Medical Affairs",
         "platform": "Teams",
         "duration_minutes": 75,
         "registration_url": None,
-        "capacity": 100,
         "xp_reward": 250,
         "start_date": None,
     },
-
     # ─────────────────────────────────────────────────────────────────────────
     # LITERATURE REVIEW
     # ─────────────────────────────────────────────────────────────────────────
@@ -117,14 +112,13 @@ WEBINARS = {
         "category": "Systematic Literature Review",
         "tags": "Elicit, SLR, Literature Review, PICO, HEOR",
         "speaker": "HEOR Team",
+        "organizer": "Health Economics & Outcomes Research",
         "platform": "Zoom",
         "duration_minutes": 60,
         "registration_url": None,
-        "capacity": 150,
         "xp_reward": 200,
         "start_date": None,
     },
-
     # ─────────────────────────────────────────────────────────────────────────
     # DATA & STATISTICS
     # ─────────────────────────────────────────────────────────────────────────
@@ -139,10 +133,10 @@ WEBINARS = {
         "category": "AI Literacy",
         "tags": "AI Literacy, Bias, Hallucination, Confidence, Data",
         "speaker": "Data Science Team",
+        "organizer": "Data & Analytics Global",
         "platform": "YouTube Live",
         "duration_minutes": 50,
         "registration_url": None,
-        "capacity": None,
         "xp_reward": 150,
         "start_date": None,
     },

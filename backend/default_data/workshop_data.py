@@ -12,7 +12,6 @@ Fields mirror the Workshop model:
   duration_minutes - expected run time
   location         - room, building, or video link placeholder
   organizer        - person or team running the session
-  capacity         - max attendees (None = unlimited)
   xp_reward        - XP awarded on completion
   start_date       - ISO datetime string or None (set per-deployment)
   end_date         - ISO datetime string or None
@@ -38,7 +37,6 @@ WORKSHOPS = {
         "duration_minutes": 120,
         "location": "Training Room B / Zoom",
         "organizer": "AI Enablement Team",
-        "capacity": 24,
         "xp_reward": 300,
         "start_date": None,
         "end_date": None,
@@ -62,7 +60,6 @@ WORKSHOPS = {
         "duration_minutes": 90,
         "location": "Conference Room A",
         "organizer": "Legal & Compliance",
-        "capacity": 30,
         "xp_reward": 250,
         "start_date": None,
         "end_date": None,
@@ -86,7 +83,6 @@ WORKSHOPS = {
         "duration_minutes": 90,
         "location": "Zoom",
         "organizer": "Medical Affairs",
-        "capacity": 40,
         "xp_reward": 200,
         "start_date": None,
         "end_date": None,
@@ -110,7 +106,6 @@ WORKSHOPS = {
         "duration_minutes": 150,
         "location": "Training Room A / Teams",
         "organizer": "HEOR Team",
-        "capacity": 20,
         "xp_reward": 350,
         "start_date": None,
         "end_date": None,
@@ -134,7 +129,6 @@ WORKSHOPS = {
         "duration_minutes": 180,
         "location": "Training Suite, Floor 3",
         "organizer": "Medical Writing Centre of Excellence",
-        "capacity": 16,
         "xp_reward": 400,
         "start_date": None,
         "end_date": None,
@@ -158,7 +152,6 @@ WORKSHOPS = {
         "duration_minutes": 60,
         "location": "Zoom",
         "organizer": "AI Enablement Team",
-        "capacity": None,
         "xp_reward": 150,
         "start_date": None,
         "end_date": None,
