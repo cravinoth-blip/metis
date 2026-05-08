@@ -136,6 +136,11 @@ def submit_quiz(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # get_current_user uses its own session which is closed before returning,
+    # leaving current_user detached. Merge re-attaches it to this route's session
+    # so XP/level changes are tracked and committed.
+    current_user = db.merge(current_user)
+
     quiz = QUIZZES.get(quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")

@@ -25,11 +25,14 @@
       <div class="text-sm text-secondary" style="margin-top:10px">
         &#128194; {{ q.category or '&mdash;' }} &middot; {{ q.question_count }} questions
       </div>
-      {% if q.best_score is not none %}
-      <div class="text-sm" style="margin-top:6px;color:var(--success)">
-        Best: {{ q.best_score }}%
+      <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+        {% if q.xp_reward %}
+        <span style="font-size:12px;font-weight:600;color:var(--primary,#6366f1)">&#9889; {{ q.xp_reward }} XP</span>
+        {% endif %}
+        {% if q.best_score is not none %}
+        <span class="text-sm" style="color:var(--success)">&#10003; Best: {{ q.best_score }}%</span>
+        {% endif %}
       </div>
-      {% endif %}
 
     </div>
     {% endfor %}

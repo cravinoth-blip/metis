@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -39,13 +39,8 @@
     {% include 'sidebar.html' %}
 
     <div id="main-wrapper">
-      <header id="topbar">
-        <h1 id="page-title">Skill Games</h1>
-        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
-          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
-          <div class="avatar" id="topbar-avatar">??</div>
-        </div>
-      </header>
+      {% set page_title = 'Skill Games' %}
+      {% include 'topbar.html' %}
 
       <main id="content" style="overflow-y:auto">
         <div id="skillgames-container"
@@ -83,7 +78,7 @@
       evt.detail.headers['Authorization'] = `Bearer ${token}`;
     });
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function showToast(msg, type = 'info') {
       const el = document.createElement('div');
       el.className = `toast toast-${type}`;
@@ -122,7 +117,7 @@
       return res.json();
     }
 
-    // ── Quiz modal ─────────────────────────────────────────────────────────────
+    // â”€â”€ Quiz modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     async function openQuiz(quizId) {
       openModal(`<div class="loading" style="padding:20px;text-align:center">Loading quiz&hellip;</div>`);
 
@@ -193,6 +188,8 @@
         try {
           const res = await apiFetch('POST', `/quiz/${quizId}/submit`, { answers: answers.map(a => a.selected) });
           const xpEarned = res.xp_earned ?? 0;
+
+          // Animate XP counter
           const xpEl = document.getElementById('xp-display');
           let n = 0;
           const step = Math.ceil(xpEarned / 20) || 1;
@@ -202,16 +199,26 @@
             if (n >= xpEarned) clearInterval(timer);
           }, 50);
 
-          const me = await apiFetch('GET', '/auth/me');
-          localStorage.setItem('metis_user', JSON.stringify(me));
+          // Update sidebar/topbar immediately from the submit response
+          const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
+          u.xp    = res.new_xp   ?? u.xp;
+          u.level = res.new_level ?? u.level;
+          localStorage.setItem('metis_user', JSON.stringify(u));
           refreshShell();
+
+          showToast(
+            res.passed
+              ? `Quiz complete! +${xpEarned} XP earned`
+              : `Quiz done! +${xpEarned} XP — keep practising!`,
+            res.passed ? 'success' : 'info'
+          );
         } catch (e) { showToast(e.message, 'error'); }
       }
 
       renderQuestion();
     }
 
-    // ── Set up handlers after HTMX loads the quiz grid ─────────────────────────
+    // â”€â”€ Set up handlers after HTMX loads the quiz grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.body.addEventListener('htmx:afterSwap', () => {
       // Filter pills
       document.querySelectorAll('#cat-pills .pill').forEach(pill => {
@@ -235,3 +242,4 @@
   </script>
 </body>
 </html>
+

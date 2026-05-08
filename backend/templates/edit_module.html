@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -41,13 +41,8 @@
     {% include 'sidebar.html' %}
 
     <div id="main-wrapper">
-      <header id="topbar">
-        <h1 id="page-title">Edit Module</h1>
-        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
-          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
-          <div class="avatar" id="topbar-avatar">??</div>
-        </div>
-      </header>
+      {% set page_title = 'Edit Module' %}
+      {% include 'topbar.html' %}
 
       <main id="content">
         <div class="editor-wrap">
@@ -141,7 +136,7 @@
       location.href = '/login';
     });
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function showToast(msg, type = 'success') {
       const el = document.createElement('div');
       el.className = `toast toast-${type}`;
@@ -160,7 +155,7 @@
       return res.json();
     }
 
-    // ── Constants ──────────────────────────────────────────────────────────────
+    // â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const SECTION_TYPES = {
       heading:    { label: 'Heading',    icon: '&#128204;', color: '#1e40af', bg: '#dbeafe' },
       text:       { label: 'Text',       icon: '&#128221;', color: '#64748b', bg: '#f1f5f9' },
@@ -170,11 +165,11 @@
       example:    { label: 'Example',    icon: '&#128203;', color: '#6d28d9', bg: '#ede9fe' },
     };
 
-    // ── State ──────────────────────────────────────────────────────────────────
+    // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let moduleData = { title: '', duration: 10, xp_reward: 50, sections: [] };
     let dragStartIndex = null;
 
-    // ── Section helpers ────────────────────────────────────────────────────────
+    // â”€â”€ Section helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function addSection(type) {
       moduleData.sections.push({ type, heading: '', body: '', points: type === 'key_points' ? [''] : [] });
       drawSections();
@@ -183,7 +178,7 @@
     function addPoint(si)     { moduleData.sections[si].points.push(''); drawSections(); }
     function removePoint(si, pi) { moduleData.sections[si].points.splice(pi, 1); drawSections(); }
 
-    // ── Preview HTML generator ─────────────────────────────────────────────────
+    // â”€â”€ Preview HTML generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function generatePreviewHTML(sections) {
       const HEADING = 'margin:20px 0 8px;font-size:15px;font-weight:700;color:var(--text-main)';
       const CALLOUT = 'background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px';
@@ -205,7 +200,7 @@
       }).join('');
     }
 
-    // ── Section renderer ───────────────────────────────────────────────────────
+    // â”€â”€ Section renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function drawSections() {
       const container = document.getElementById('sections-container');
       if (!moduleData.sections.length) {
@@ -332,10 +327,10 @@
       });
     }
 
-    // ── Preview ────────────────────────────────────────────────────────────────
+    // â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.getElementById('preview-btn').addEventListener('click', () => {
       document.getElementById('preview-title').textContent = moduleData.title || 'Untitled Module';
-      document.getElementById('preview-meta').textContent  = `⏱ ${moduleData.duration || 0} min · ${moduleData.xp_reward || 0} XP`;
+      document.getElementById('preview-meta').textContent  = `⏱ ${moduleData.duration || 0} min Â· ${moduleData.xp_reward || 0} XP`;
       document.getElementById('preview-body').innerHTML    = generatePreviewHTML(moduleData.sections)
         || '<p style="color:#64748b;text-align:center;padding:40px">Add some sections to see the preview!</p>';
       document.getElementById('preview-overlay').classList.add('open');
@@ -346,7 +341,7 @@
         document.getElementById('preview-overlay').classList.remove('open');
     });
 
-    // ── Save ───────────────────────────────────────────────────────────────────
+    // â”€â”€ Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.getElementById('save-btn').addEventListener('click', async () => {
       if (!moduleData.title.trim()) { showToast('Please enter a module title', 'error'); return; }
 
@@ -373,12 +368,12 @@
       }
     });
 
-    // ── Toolbar buttons ────────────────────────────────────────────────────────
+    // â”€â”€ Toolbar buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.getElementById('add-sec-btn').addEventListener('click', () =>
       addSection(document.getElementById('section-type-select').value)
     );
 
-    // ── Boot: load module data ─────────────────────────────────────────────────
+    // â”€â”€ Boot: load module data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     (async () => {
       let existing;
       try {
@@ -431,3 +426,4 @@
   </script>
 </body>
 </html>
+

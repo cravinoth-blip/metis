@@ -6,10 +6,7 @@
            hx-target="#users-tab-content"
            hx-swap="outerHTML"
            hx-trigger="keyup changed delay:400ms">
-    <button class="btn btn-primary btn-sm"
-            hx-get="/api/admin/ui/users/form"
-            hx-target="#modal-container">+ New User</button>
-  </div>
+     </div>
 
   <div class="card" style="padding:0;overflow:hidden">
     <table class="table">
@@ -24,7 +21,7 @@
           <td>{{ u.department or '&#8212;' }}</td>
           <td>{{ u.xp }}</td>
           <td>{{ u.level }}</td>
-          <td>{{ '&#10003;' if u.is_admin else '' }}</td>
+          <td>{{ 'true' if u.is_admin else 'false' }}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm"
                     hx-get="/api/admin/ui/users/form?user_id={{ u.id }}"

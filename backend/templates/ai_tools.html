@@ -35,9 +35,9 @@
       <tbody>
         {% for t in tools %}
         <tr id="tool-row-{{ t.id }}">
-          <td style="font-size:1.3em;text-align:center">{{ t.emoji_logo or '&#128295;' }}</td>
+          <td style="font-size:1.3em;text-align:center">{{ t.emoji_logo or '' }}</td>
           <td style="font-weight:500">{{ t.name }}</td>
-          <td>{{ t.category or '&mdash;' }}</td>
+          <td>{{ t.category or 'No category' }}</td>
           <td style="font-size:.9em">{{ t.provider or '&mdash;' }}</td>
           <td style="font-size:.85em;color:var(--text-secondary)">{{ t.tags or '&mdash;' }}</td>
           <td>

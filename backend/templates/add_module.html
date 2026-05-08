@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -33,7 +33,7 @@
       font-size: 14px; line-height: 1.7; color: var(--text-main, #1e293b);
     }
     #live-preview.empty::before {
-      content: 'Your content will appear here as you type…';
+      content: 'Your content will appear here as you typeâ€¦';
       color: #94a3b8; font-style: italic;
     }
     /* preview modal */
@@ -63,13 +63,8 @@
     {% include 'sidebar.html' %}
 
     <div id="main-wrapper">
-      <header id="topbar">
-        <h1 id="page-title">Module Builder</h1>
-        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
-          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
-          <div class="avatar" id="topbar-avatar">??</div>
-        </div>
-      </header>
+      {% set page_title = 'Module Builder' %}
+      {% include 'topbar.html' %}
 
       <main id="content">
         <div class="builder-wrap">
@@ -160,7 +155,7 @@
       location.href = '/login';
     });
 
-    // ── Toast ──────────────────────────────────────────────────────────────────
+    // â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function showToast(msg, type = 'success') {
       const el = document.createElement('div');
       el.className = `toast toast-${type}`;
@@ -169,7 +164,7 @@
       setTimeout(() => el.remove(), 3500);
     }
 
-    // ── Quill ──────────────────────────────────────────────────────────────────
+    // â”€â”€ Quill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const quill = new Quill('#editor-container', {
       theme: 'snow',
       modules: {
@@ -197,13 +192,13 @@
       livePreview.classList.toggle('empty', !quill.getText().trim());
     });
 
-    // ── Preview ────────────────────────────────────────────────────────────────
+    // â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.getElementById('preview-btn').addEventListener('click', () => {
       const title = document.getElementById('mod-title').value || 'Untitled Module';
       const dur   = document.getElementById('mod-dur').value || 0;
       const xp    = document.getElementById('mod-xp').value  || 0;
       document.getElementById('preview-title').textContent = title;
-      document.getElementById('preview-meta').textContent  = `⏱ ${dur} min · ${xp} XP`;
+      document.getElementById('preview-meta').textContent  = `⏱ ${dur} min Â· ${xp} XP`;
       document.getElementById('preview-body').innerHTML    = quill.getSemanticHTML()
         || '<p style="color:#64748b;text-align:center;padding:40px">Write some content to see the preview!</p>';
       document.getElementById('preview-overlay').classList.add('open');
@@ -214,7 +209,7 @@
         document.getElementById('preview-overlay').classList.remove('open');
     });
 
-    // ── Resizable split ────────────────────────────────────────────────────────
+    // â”€â”€ Resizable split â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     (function () {
       const handle  = document.getElementById('drag-handle');
       const left    = document.getElementById('panel-editor');
@@ -251,7 +246,7 @@
       });
     })();
 
-    // ── Save ───────────────────────────────────────────────────────────────────
+    // â”€â”€ Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.getElementById('save-btn').addEventListener('click', async () => {
       const title = document.getElementById('mod-title').value.trim();
       if (!title) { showToast('Please enter a module title', 'error'); return; }
@@ -283,3 +278,4 @@
   </script>
 </body>
 </html>
+

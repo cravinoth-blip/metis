@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -61,13 +61,8 @@
 
 
     <div id="main-wrapper">
-      <header id="topbar">
-        <h1 id="page-title">Admin</h1>
-        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
-          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
-          <div class="avatar" id="topbar-avatar">??</div>
-        </div>
-      </header>
+      {% set page_title = 'Admin' %}
+      {% include 'topbar.html' %}
 
       <nav class="admin-tabs" id="admin-tabs">
         <button class="tab-btn active"
@@ -144,3 +139,4 @@
   </script>
 </body>
 </html>
+

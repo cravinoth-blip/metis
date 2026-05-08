@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -38,13 +38,8 @@
     {% include 'sidebar.html' %}
 
     <div id="main-wrapper">
-      <header id="topbar">
-        <h1 id="page-title">Learning</h1>
-        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
-          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
-          <div class="avatar" id="topbar-avatar">??</div>
-        </div>
-      </header>
+      {% set page_title = 'Learning' %}
+      {% include 'topbar.html' %}
 
       <main id="content" style="overflow-y:auto">
         <div id="learning-container"
@@ -82,7 +77,7 @@
       evt.detail.headers['Authorization'] = `Bearer ${token}`;
     });
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function showToast(msg, type = 'success') {
       const el = document.createElement('div');
       el.className = `toast toast-${type}`;
@@ -102,7 +97,7 @@
       localStorage.setItem('metis_user', JSON.stringify(u));
     });
 
-    // ── Expand / collapse module list ──────────────────────────────────────────
+    // â”€â”€ Expand / collapse module list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function toggleModules(lrId, header) {
       const el    = document.getElementById('mods-' + lrId);
       const arrow = header.querySelector('.lr-arrow');
@@ -163,3 +158,4 @@
   </script>
 </body>
 </html>
+

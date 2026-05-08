@@ -52,9 +52,9 @@
             {% if e.location %}<div class="text-sm" style="color:var(--text-secondary)">&#128205; {{ e.location }}</div>{% endif %}
             {% if e.speaker %}<div class="text-sm" style="color:var(--text-secondary)">&#127908; {{ e.speaker }}</div>{% endif %}
           </td>
-          <td style="font-size:.9em;white-space:nowrap">{{ e.event_date or '&#8212;' }}{% if e.event_time %} {{ e.event_time }}{% endif %}</td>
-          <td>{{ (e.duration_minutes | string + ' min') if e.duration_minutes else '&#8212;' }}</td>
-          <td>{{ e.organizer or '&#8212;' }}</td>
+          <td style="font-size:.9em;white-space:nowrap">{{ e.event_date or 'N/A' }}{% if e.event_time %} {{ e.event_time }}{% endif %}</td>
+          <td>{{ (e.duration_minutes | string + ' min') if e.duration_minutes else 'N/A' }}</td>
+          <td>{{ e.organizer or 'N/A' }}</td>
           <td>{{ e.xp_reward }}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm"
