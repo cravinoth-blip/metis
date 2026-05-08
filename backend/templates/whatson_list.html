@@ -1,0 +1,74 @@
+<div id="whatson-container" style="padding:24px">
+
+  {# ── Filter pills ─────────────────────────────────────────────────────────── #}
+  <div class="filter-pills" style="margin-bottom:24px;display:flex;gap:8px;flex-wrap:wrap">
+    {% for val, label in [('all','All'), ('workshop','🛠️ Workshops'), ('webinar','💻 Webinars'), ('news','📰 AI News')] %}
+    <span class="pill {% if event_type == val %}active{% endif %}"
+          style="cursor:pointer"
+          hx-get="/api/events/ui?event_type={{ val }}"
+          hx-target="#whatson-container"
+          hx-swap="outerHTML">{{ label }}</span>
+    {% endfor %}
+  </div>
+
+  {# ── Event cards ──────────────────────────────────────────────────────────── #}
+  {% if events %}
+  <div class="event-grid">
+    {% for ev in events %}
+    {% set ec = event_colors.get(ev.event_type, {'bg':'#f1f5f9','color':'#64748b','label': ev.event_type}) %}
+    {% set fc = format_colors.get(ev.format, None) if ev.format else None %}
+    <div class="event-card">
+
+      {# Type badge #}
+      <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="type-badge" style="background:{{ ec.bg }};color:{{ ec.color }}">{{ ec.label }}</span>
+        {% if fc %}
+        <span class="type-badge" style="background:{{ fc.bg }};color:{{ fc.color }}">{{ fc.label }}</span>
+        {% elif ev.platform %}
+        <span class="type-badge" style="background:#f1f5f9;color:#64748b"> {{ ev.platform }}</span>
+        {% endif %}
+        {% if ev.event_type not in ['news'] and ev.category %}
+        <span class="type-badge" style="background:#f1f5f9;color:#64748b">{{ ev.category }}</span>
+        {% endif %}
+      </div>
+
+      <div style="font-weight:600;margin-bottom:6px">{{ ev.title }}</div>
+      <div class="text-sm text-secondary" style="margin-bottom:10px">{{ ev.description or '' }}</div>
+
+      {# Meta row #}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)">
+        {% if ev.event_date %}
+        <span>📅 {{ ev.event_date }}{% if ev.event_time %} {{ ev.event_time }}{% endif %}</span>
+        {% endif %}
+        {% if ev.duration_minutes %}
+        <span>⏱ {{ ev.duration_minutes }} min</span>
+        {% endif %}
+        {% if ev.location %}
+        <span>📍 {{ ev.location }}</span>
+        {% endif %}
+        {% set person = ev.organizer or ev.speaker or ev.host %}
+        {% if person %}
+        <span>👤 {{ person }}</span>
+        {% endif %}
+        {% if ev.xp_reward %}
+        <span style="color:var(--gold,#d97706)">⚡ {{ ev.xp_reward }} XP</span>
+        {% endif %}
+      </div>
+
+      {# Link button #}
+      {% set link = ev.registration_url or ev.source_url %}
+      {% if link %}
+      <a href="{{ link }}" target="_blank" rel="noopener"
+         class="btn btn-secondary btn-sm" style="margin-top:12px;text-decoration:none;display:inline-block">
+        {{ 'Access link >' if ev.registration_url else 'View >' }}
+      </a>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">No {{ event_type if event_type != 'all' else '' }} events found.</div>
+  {% endif %}
+
+</div>

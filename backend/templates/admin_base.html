@@ -108,6 +108,9 @@
     document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
     document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
 
+    // Always visible on the admin page — user is guaranteed to be an admin
+    document.getElementById('admin-link').classList.remove('hidden');
+
     document.getElementById('admin-logout-btn').addEventListener('click', () => {
       localStorage.removeItem('metis_token');
       localStorage.removeItem('metis_user');

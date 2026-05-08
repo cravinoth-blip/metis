@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
@@ -151,11 +151,27 @@ async def skillgames_page(request: Request):
 async def learning_page(request: Request):
     return _templates.TemplateResponse("learning_page.html", {"request": request, "active_page": "learning"})
 
-@app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
-async def serve_spa(request: Request, full_path: str):
-    return _templates.TemplateResponse("index.html", {"request": request})
+@app.get("/add-module", response_class=HTMLResponse, include_in_schema=False)
+async def add_module_page(request: Request, learning_id: str = ""):
+    if not learning_id:
+        return RedirectResponse("/admin", status_code=302)
+    return _templates.TemplateResponse("add_module.html", {
+        "request": request, "learning_id": learning_id, "active_page": "admin"
+    })
 
+@app.get("/edit-module", response_class=HTMLResponse, include_in_schema=False)
+async def edit_module_page(request: Request, module_id: str = ""):
+    if not module_id:
+        return RedirectResponse("/admin", status_code=302)
+    return _templates.TemplateResponse("edit_module.html", {
+        "request": request, "module_id": module_id, "active_page": "admin"
+    })
 
+@app.get("/whatson", response_class=HTMLResponse, include_in_schema=False)
+async def whatson_page(request: Request):
+    return _templates.TemplateResponse("whatson_page.html", {
+        "request": request, "active_page": "whatson"
+    })
 
 
 # ---------------------------------------------------------------------------

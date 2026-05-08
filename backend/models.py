@@ -75,7 +75,6 @@ class Event(Base):
     location = Column(String, nullable=True)
     tags = Column(String, nullable=True) # SQLite stores lists as strings
     xp_reward = Column(Integer, default=0)
-    capacity = Column(Integer, default=0)
     registered_count = Column(Integer, default=0)
     source_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)

@@ -49,6 +49,10 @@ def _parse_markdown(text: str) -> str:
 def _render_module_content(content_text: str) -> str:
     if not content_text:
         return '<p style="color:var(--text-secondary)">No content available.</p>'
+    # Raw HTML from the Quill editor — pass straight through
+    stripped = content_text.strip()
+    if stripped.startswith('<') and not stripped.startswith('["') and not stripped.startswith('[{'):
+        return stripped
     try:
         parsed = json.loads(content_text)
         if isinstance(parsed, list):

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Module &mdash; Metis</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+  <style>
+    #content { overflow-y: auto; }
+    .editor-wrap { max-width: 860px; margin: 0 auto; padding: 24px 24px 80px; }
+    .section-block {
+      border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;
+      margin-bottom: 20px; background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05); transition: border .2s;
+    }
+    .section-block.drag-over { border: 2px dashed #6366f1; }
+    #preview-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      align-items: center; justify-content: center; z-index: 1000;
+    }
+    #preview-overlay.open { display: flex; }
+    #preview-box {
+      background: #fff; border-radius: 12px; padding: 28px;
+      width: 640px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative;
+    }
+    #toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast { padding: 10px 18px; border-radius: 8px; font-size: .9rem; font-weight: 500; animation: fadein .2s; }
+    .toast-success { background: #dcfce7; color: #166534; }
+    .toast-error   { background: #fee2e2; color: #991b1b; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div id="app">
+    {% include 'sidebar.html' %}
+
+    <div id="main-wrapper">
+      <header id="topbar">
+        <h1 id="page-title">Edit Module</h1>
+        <div class="topbar-user" style="background:none;border-left:none;cursor:default">
+          <span class="xp-chip" id="topbar-xp">&#9889; 0 XP</span>
+          <div class="avatar" id="topbar-avatar">??</div>
+        </div>
+      </header>
+
+      <main id="content">
+        <div class="editor-wrap">
+
+          <!-- Header row -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+            <div>
+              <h2 style="font-size:20px;margin-bottom:4px">Edit Module</h2>
+              <p class="text-secondary text-sm">
+                Module ID: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">{{ module_id }}</code>
+                &nbsp;&mdash;&nbsp;
+                <a href="/admin" style="color:var(--primary)">&#8592; Back to Admin</a>
+              </p>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="preview-btn" class="btn btn-secondary">Preview</button>
+              <button id="save-btn" class="btn btn-primary">Save Changes</button>
+            </div>
+          </div>
+
+          <!-- Meta fields -->
+          <div style="background:#f8fafc;padding:20px;border-radius:12px;border:1px solid var(--border);margin-bottom:24px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px">
+            <div>
+              <label class="form-label" style="font-size:12px">Module Title *</label>
+              <input id="mod-title" class="form-input" placeholder="e.g. Core Concepts">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:12px">Duration (min)</label>
+              <input id="mod-dur" type="number" class="form-input" min="0">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:12px">XP Reward</label>
+              <input id="mod-xp" type="number" class="form-input" min="0">
+            </div>
+          </div>
+
+          <!-- Add block toolbar -->
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:12px">
+            <span style="font-weight:600;font-size:14px">Add Block:</span>
+            <select id="section-type-select" class="form-input" style="flex:1;max-width:200px">
+              <option value="heading">&#128204; Heading</option>
+              <option value="text">&#128221; Text</option>
+              <option value="key_points">&#10024; Key Points</option>
+              <option value="tip">&#128161; Tip</option>
+              <option value="warning">&#9888;&#65039; Warning</option>
+              <option value="example">&#128203; Example</option>
+            </select>
+            <button id="add-sec-btn" class="btn btn-secondary">+ Add Section</button>
+          </div>
+
+          <!-- Sections -->
+          <div id="sections-container">
+            <div class="loading">Loading module&hellip;</div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Preview modal -->
+  <div id="preview-overlay">
+    <div id="preview-box">
+      <button onclick="document.getElementById('preview-overlay').classList.remove('open')"
+              style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.2rem;cursor:pointer">&#10005;</button>
+      <div style="display:inline-block;padding:2px 8px;border-radius:12px;background:#e2e8f0;color:#475569;font-size:11px;font-weight:700;margin-bottom:8px">PREVIEW</div>
+      <h2 id="preview-title" style="font-size:22px;margin-bottom:4px"></h2>
+      <div id="preview-meta" class="text-sm text-secondary" style="margin-bottom:20px"></div>
+      <div id="preview-body" style="font-size:14px;line-height:1.7;max-height:55vh;overflow-y:auto;padding-right:8px"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+  <script>
+    const token   = localStorage.getItem('metis_token');
+    const user    = JSON.parse(localStorage.getItem('metis_user') || '{}');
+    const MODULE_ID = '{{ module_id }}';
+
+    if (!token) { location.href = '/login'; }
+
+    document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
+    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
+    document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
+    document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
+    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
+    if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
+
+    document.getElementById('admin-logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('metis_token');
+      localStorage.removeItem('metis_user');
+      location.href = '/login';
+    });
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    async function apiFetch(method, path, body) {
+      const res = await fetch('/api' + path, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      if (!res.ok) { const t = await res.json().catch(() => ({})); throw new Error(t.detail || 'Request failed'); }
+      return res.json();
+    }
+
+    // ── Constants ──────────────────────────────────────────────────────────────
+    const SECTION_TYPES = {
+      heading:    { label: 'Heading',    icon: '&#128204;', color: '#1e40af', bg: '#dbeafe' },
+      text:       { label: 'Text',       icon: '&#128221;', color: '#64748b', bg: '#f1f5f9' },
+      key_points: { label: 'Key Points', icon: '&#10024;',  color: '#15803d', bg: '#dcfce7' },
+      tip:        { label: 'Tip',        icon: '&#128161;', color: '#0369a1', bg: '#e0f2fe' },
+      warning:    { label: 'Warning',    icon: '&#9888;',   color: '#b45309', bg: '#fef3c7' },
+      example:    { label: 'Example',    icon: '&#128203;', color: '#6d28d9', bg: '#ede9fe' },
+    };
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let moduleData = { title: '', duration: 10, xp_reward: 50, sections: [] };
+    let dragStartIndex = null;
+
+    // ── Section helpers ────────────────────────────────────────────────────────
+    function addSection(type) {
+      moduleData.sections.push({ type, heading: '', body: '', points: type === 'key_points' ? [''] : [] });
+      drawSections();
+    }
+    function removeSection(i) { moduleData.sections.splice(i, 1); drawSections(); }
+    function addPoint(si)     { moduleData.sections[si].points.push(''); drawSections(); }
+    function removePoint(si, pi) { moduleData.sections[si].points.splice(pi, 1); drawSections(); }
+
+    // ── Preview HTML generator ─────────────────────────────────────────────────
+    function generatePreviewHTML(sections) {
+      const HEADING = 'margin:20px 0 8px;font-size:15px;font-weight:700;color:var(--text-main)';
+      const CALLOUT = 'background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px';
+      return sections.map(s => {
+        const body   = (s.body   || '').trim();
+        const points = (s.points || []).filter(p => p.trim());
+        if (s.type === 'heading')    return body ? `<h3 style="${HEADING}">${body}</h3>` : '';
+        if (s.type === 'text')       return `<div class="ql-editor" style="padding:0">${body}</div>`;
+        if (s.type === 'key_points' && points.length) {
+          const items = points.map(p => `<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">${p}</li>`).join('');
+          return `<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0">
+            <div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px">&#10024; Key Points</div>
+            <ul style="margin:0;color:#14532d;line-height:1.6">${items}</ul></div>`;
+        }
+        if (s.type === 'tip')     return `<div style="${CALLOUT}">&#128161; <strong>Tip:</strong><div class="ql-editor" style="padding:8px 0 0">${body}</div></div>`;
+        if (s.type === 'warning') return `<div style="${CALLOUT.replace('#eff6ff','#fef3c7').replace('#3b82f6','#b45309')}">&#9888; <strong>Warning:</strong><div class="ql-editor" style="padding:8px 0 0">${body}</div></div>`;
+        if (s.type === 'example') return `<div style="${CALLOUT.replace('#eff6ff','#ede9fe').replace('#3b82f6','#6d28d9')}">&#128203; <strong>Example:</strong><div class="ql-editor" style="padding:8px 0 0">${body}</div></div>`;
+        return '';
+      }).join('');
+    }
+
+    // ── Section renderer ───────────────────────────────────────────────────────
+    function drawSections() {
+      const container = document.getElementById('sections-container');
+      if (!moduleData.sections.length) {
+        container.innerHTML = `<div style="padding:40px;text-align:center;background:#f8fafc;border-radius:12px;border:2px dashed #cbd5e1;color:#64748b">
+          No sections yet. Select a block type above to begin!</div>`;
+        return;
+      }
+
+      container.innerHTML = moduleData.sections.map((sec, i) => {
+        const cfg = SECTION_TYPES[sec.type] || SECTION_TYPES.text;
+        let content = '';
+
+        if (sec.type === 'heading') {
+          content = `<div style="margin-top:12px">
+            <input type="text" class="form-input head-input" data-sec="${i}"
+                   value="${(sec.body || '').replace(/"/g, '&quot;')}"
+                   placeholder="Heading text…" style="width:100%;font-size:15px;font-weight:700">
+          </div>`;
+        } else if (sec.type === 'key_points') {
+          const pts = (sec.points || []).map((pt, j) => `
+            <div style="display:flex;gap:8px">
+              <input type="text" class="form-input pt-input" data-sec="${i}" data-pt="${j}"
+                     value="${(pt || '').replace(/"/g, '&quot;')}" placeholder="Enter a key point…" style="flex:1">
+              <button class="btn btn-secondary rm-pt-btn" data-sec="${i}" data-pt="${j}"
+                      style="padding:0 12px;color:#ef4444">&#10005;</button>
+            </div>`).join('');
+          content = `<div style="margin-top:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;display:block">Bullet Points</label>
+            <div style="display:flex;flex-direction:column;gap:8px">${pts}</div>
+            <button class="btn btn-secondary btn-sm add-pt-btn" data-sec="${i}" style="margin-top:12px">+ Add Point</button>
+          </div>`;
+        } else {
+          content = `<div style="margin-top:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">Body Content</label>
+            <div style="background:#fff;border-radius:4px">
+              <div class="quill-editor" data-sec="${i}" style="min-height:120px">${sec.body || ''}</div>
+            </div>
+          </div>`;
+        }
+
+        return `<div class="section-block" draggable="true" data-sec-idx="${i}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="cursor:grab;font-size:20px;color:#94a3b8;user-select:none" title="Drag to reorder">&#8942;&#8942;</div>
+              <div style="background:${cfg.bg};color:${cfg.color};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">
+                ${cfg.icon} ${cfg.label}
+              </div>
+            </div>
+            <button class="rm-sec-btn" data-sec="${i}"
+                    style="background:none;border:none;color:#ef4444;cursor:pointer;font-weight:600;font-size:13px">Remove</button>
+          </div>
+          ${content}
+        </div>`;
+      }).join('');
+
+      attachListeners();
+    }
+
+    function attachListeners() {
+      const container = document.getElementById('sections-container');
+
+      // Quill editors
+      container.querySelectorAll('.quill-editor').forEach(el => {
+        const si = el.dataset.sec;
+        const q = new Quill(el, {
+          theme: 'snow',
+          modules: { toolbar: [
+            [{ font: [] }, { size: [] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            [{ header: '1' }, { header: '2' }, 'blockquote', 'code-block'],
+            [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+            [{ script: 'sub' }, { script: 'super' }],
+            [{ align: [] }],
+            ['link', 'image', 'video'],
+            ['clean'],
+          ]},
+        });
+        q.on('text-change', () => { moduleData.sections[si].body = q.getSemanticHTML(); });
+      });
+
+      // Text inputs
+      container.querySelectorAll('.head-input').forEach(inp =>
+        inp.addEventListener('input', e => { moduleData.sections[e.target.dataset.sec].body = e.target.value; })
+      );
+      container.querySelectorAll('.pt-input').forEach(inp =>
+        inp.addEventListener('input', e => { moduleData.sections[e.target.dataset.sec].points[e.target.dataset.pt] = e.target.value; })
+      );
+
+      // Buttons
+      container.querySelectorAll('.rm-sec-btn').forEach(btn =>
+        btn.addEventListener('click', e => removeSection(+e.target.dataset.sec))
+      );
+      container.querySelectorAll('.add-pt-btn').forEach(btn =>
+        btn.addEventListener('click', e => addPoint(+e.target.dataset.sec))
+      );
+      container.querySelectorAll('.rm-pt-btn').forEach(btn =>
+        btn.addEventListener('click', e => removePoint(+e.target.dataset.sec, +e.target.dataset.pt))
+      );
+
+      // Drag & drop reorder
+      container.querySelectorAll('.section-block').forEach(block => {
+        block.addEventListener('dragstart', e => {
+          dragStartIndex = +e.currentTarget.dataset.secIdx;
+          e.currentTarget.style.opacity = '0.4';
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        block.addEventListener('dragend', e => {
+          e.currentTarget.style.opacity = '1';
+          container.querySelectorAll('.section-block').forEach(b => b.classList.remove('drag-over'));
+        });
+        block.addEventListener('dragover', e => { e.preventDefault(); block.classList.add('drag-over'); });
+        block.addEventListener('dragleave', () => block.classList.remove('drag-over'));
+        block.addEventListener('drop', e => {
+          e.preventDefault();
+          block.classList.remove('drag-over');
+          const dropIdx = +e.currentTarget.dataset.secIdx;
+          if (dragStartIndex !== null && dragStartIndex !== dropIdx) {
+            const [moved] = moduleData.sections.splice(dragStartIndex, 1);
+            moduleData.sections.splice(dropIdx, 0, moved);
+            drawSections();
+          }
+        });
+      });
+    }
+
+    // ── Preview ────────────────────────────────────────────────────────────────
+    document.getElementById('preview-btn').addEventListener('click', () => {
+      document.getElementById('preview-title').textContent = moduleData.title || 'Untitled Module';
+      document.getElementById('preview-meta').textContent  = `⏱ ${moduleData.duration || 0} min · ${moduleData.xp_reward || 0} XP`;
+      document.getElementById('preview-body').innerHTML    = generatePreviewHTML(moduleData.sections)
+        || '<p style="color:#64748b;text-align:center;padding:40px">Add some sections to see the preview!</p>';
+      document.getElementById('preview-overlay').classList.add('open');
+    });
+
+    document.getElementById('preview-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('preview-overlay'))
+        document.getElementById('preview-overlay').classList.remove('open');
+    });
+
+    // ── Save ───────────────────────────────────────────────────────────────────
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      if (!moduleData.title.trim()) { showToast('Please enter a module title', 'error'); return; }
+
+      const cleanSections = moduleData.sections.map(s => ({
+        ...s, points: s.type === 'key_points' ? s.points.filter(p => p.trim()) : [],
+      }));
+      const payload = {
+        title:        moduleData.title.trim(),
+        duration_min: moduleData.duration || null,
+        xp_reward:    moduleData.xp_reward,
+        content_text: JSON.stringify(cleanSections),
+      };
+
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+
+      try {
+        await apiFetch('PUT', `/admin/learning-modules/${MODULE_ID}`, payload);
+        showToast('Module updated!', 'success');
+        setTimeout(() => { location.href = '/admin'; }, 800);
+      } catch (e) {
+        showToast(e.message, 'error');
+        btn.disabled = false; btn.textContent = 'Save Changes';
+      }
+    });
+
+    // ── Toolbar buttons ────────────────────────────────────────────────────────
+    document.getElementById('add-sec-btn').addEventListener('click', () =>
+      addSection(document.getElementById('section-type-select').value)
+    );
+
+    // ── Boot: load module data ─────────────────────────────────────────────────
+    (async () => {
+      let existing;
+      try {
+        existing = await apiFetch('GET', `/admin/learning-modules/${MODULE_ID}`);
+      } catch (e) {
+        document.getElementById('sections-container').innerHTML =
+          `<div class="empty-state">Failed to load module: ${e.message}</div>`;
+        return;
+      }
+
+      // Populate meta fields
+      document.getElementById('mod-title').value = existing.title      || '';
+      document.getElementById('mod-dur').value   = existing.duration_min ?? 10;
+      document.getElementById('mod-xp').value    = existing.xp_reward  ?? 50;
+      moduleData.title     = existing.title      || '';
+      moduleData.duration  = existing.duration_min ?? 10;
+      moduleData.xp_reward = existing.xp_reward  ?? 50;
+
+      // Parse sections
+      let sections = [];
+      if (existing.content_text) {
+        try {
+          const parsed = JSON.parse(existing.content_text);
+          sections = Array.isArray(parsed) ? parsed : [{ type: 'text', heading: '', body: existing.content_text, points: [] }];
+        } catch (_) {
+          sections = [{ type: 'text', heading: '', body: existing.content_text, points: [] }];
+        }
+      }
+
+      // Normalise: split heading + body into separate blocks
+      const out = [];
+      for (const s of sections) {
+        const h = (s.heading || '').trim();
+        if (h) {
+          out.push({ type: 'heading', heading: '', body: h, points: [] });
+          out.push({ ...s, heading: '' });
+        } else {
+          out.push(s);
+        }
+      }
+      moduleData.sections = out;
+
+      // Wire meta inputs
+      document.getElementById('mod-title').addEventListener('input', e => { moduleData.title    = e.target.value; });
+      document.getElementById('mod-dur').addEventListener('input',   e => { moduleData.duration  = parseInt(e.target.value) || 0; });
+      document.getElementById('mod-xp').addEventListener('input',    e => { moduleData.xp_reward = parseInt(e.target.value) || 0; });
+
+      drawSections();
+    })();
+  </script>
+</body>
+</html>

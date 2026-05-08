@@ -1,14 +1,31 @@
 ﻿# In your event router file
 
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, asc
-from datetime import datetime
+from sqlalchemy import desc
 from typing import Optional, List
 from database import get_db
 import models
 import schemas
 from auth import get_current_user, calculate_level, verify_token
+
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+
+EVENT_COLORS = {
+    "news":       {"bg": "#eff6ff", "color": "#2563eb", "label": "📰 AI News"},
+    "workshop":   {"bg": "#dcfce7", "color": "#16a34a", "label": "🛠️ Workshop"},
+    "webinar":    {"bg": "#ede9fe", "color": "#7c3aed", "label": "💻 Webinar"},
+    "conference": {"bg": "#fee2e2", "color": "#dc2626", "label": "🎤 Conference"},
+}
+FORMAT_COLORS = {
+    "in-person": {"bg": "#dcfce7", "color": "#16a34a", "label": "🏢 In-Person"},
+    "online":    {"bg": "#dbeafe", "color": "#1d4ed8", "label": "🌐 Online"},
+    "hybrid":    {"bg": "#fef3c7", "color": "#d97706", "label": "🔀 Hybrid"},
+    "other":     {"bg": "#f1f5f9", "color": "#64748b", "label": "📌 Other"},
+}
 
 router = APIRouter(tags=["events"])
 
@@ -28,6 +45,25 @@ def _get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optio
     except Exception:
         # Catches expired tokens or validation errors without crashing
         return None
+
+@router.get("/ui", response_class=HTMLResponse)
+def whatson_ui(
+    request: Request,
+    event_type: str = "all",
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.Event).filter(models.Event.is_active == True)
+    if event_type and event_type != "all":
+        query = query.filter(models.Event.event_type == event_type)
+    events = query.order_by(desc(models.Event.event_date), desc(models.Event.created_at)).all()
+    return _templates.TemplateResponse("whatson_list.html", {
+        "request":      request,
+        "events":       events,
+        "event_type":   event_type,
+        "event_colors": EVENT_COLORS,
+        "format_colors": FORMAT_COLORS,
+    })
+
 
 @router.get("/", response_model=List[schemas.EventOut])
 def list_all_events(
@@ -63,7 +99,7 @@ def list_all_events(
     # Prepare the output
     result = []
     for event in events:
-        evt_out = schemas.EventOut.from_orm(event)
+        evt_out = schemas.EventOut.model_validate(event)
         evt_out.is_registered = event.id in user_reg_ids
         result.append(evt_out)
         

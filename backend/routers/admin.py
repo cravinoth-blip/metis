@@ -27,6 +27,12 @@ class ModuleBuildData(BaseModel):
     xp_reward: int = 0
     sections: List[Any] = []
 
+class ModuleHtmlData(BaseModel):
+    title: str
+    duration: int = 0
+    xp_reward: int = 50
+    content_text: str = ""
+
 
 # ==============================================================================
 # EXISTING JSON API ENDPOINTS (Untouched)
@@ -415,6 +421,38 @@ def build_learning_module(
     db.commit()
     db.refresh(module)
     return {"id": module.id, "message": "Module created"}
+
+@router.post("/learnings/{learning_id}/modules/build-html", status_code=201)
+def build_learning_module_html(
+    learning_id: str,
+    data: ModuleHtmlData,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+    if not learning:
+        raise HTTPException(status_code=404, detail="Learning not found")
+    existing_count = db.query(models.LearningModule).filter(
+        models.LearningModule.learning_id == learning_id,
+        models.LearningModule.is_active == True,
+    ).count()
+    module = models.LearningModule(
+        id=str(uuid.uuid4()),
+        learning_id=learning_id,
+        title=data.title,
+        content_text=data.content_text,
+        order=existing_count,
+        duration_min=data.duration or None,
+        xp_reward=data.xp_reward,
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(module)
+    db.commit()
+    db.refresh(module)
+    return {"id": module.id, "message": "Module created"}
+
 
 @router.get("/learning-modules/{module_id}")
 def get_learning_module_admin(
