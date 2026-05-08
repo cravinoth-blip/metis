@@ -194,8 +194,10 @@ def ui_complete_module(
     ).first()
 
     xp_earned = 0
+    completion_bonus = 0
+    learning_just_completed = False
     if not existing:
-        # Use xp_reward if set, otherwise default to 10 (same as the JSON endpoint)
+        # Use xp_reward if set, otherwise default to 10
         xp_earned = getattr(module, 'xp_reward', None) or 10
 
         # Count BEFORE adding so autoflush doesn't double-count
@@ -217,10 +219,12 @@ def ui_complete_module(
         current_user.xp += xp_earned
         new_level, _ = calculate_level(current_user.xp)
         current_user.level = new_level
+
         lp = db.query(models.LearningProgress).filter(
             models.LearningProgress.user_id == current_user.id,
             models.LearningProgress.learning_id == learning_id,
         ).first()
+        was_already_completed = lp and lp.completed
         if lp:
             lp.progress_pct = progress
             if progress >= 100:
@@ -231,17 +235,42 @@ def ui_complete_module(
                 user_id=current_user.id, learning_id=learning_id,
                 progress_pct=progress, completed=(progress >= 100),
             ))
+
+        # Award the learning-level XP bonus the first time all modules are done
+        if progress >= 100 and not was_already_completed:
+            learning_just_completed = True
+            lr = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+            completion_bonus = (lr.xp_reward or 0) if lr else 0
+            if completion_bonus:
+                current_user.xp += completion_bonus
+                new_level, _ = calculate_level(current_user.xp)
+                current_user.level = new_level
+
         db.commit()
         db.refresh(current_user)
 
     learnings = _learning_rows(current_user.id, db)
-    toast = f"Module complete! +{xp_earned} XP" if xp_earned else "Already completed"
+    total_xp = xp_earned + completion_bonus
+    if not xp_earned:
+        toast = "Already completed"
+    elif learning_just_completed and completion_bonus:
+        toast = f"Learning complete! +{total_xp} XP"
+    elif learning_just_completed:
+        toast = f"Learning complete! +{xp_earned} XP"
+    else:
+        toast = f"Module complete! +{xp_earned} XP"
+
     response = _templates.TemplateResponse("learning_list.html", {"request": request, "learnings": learnings, "q": ""})
-    response.headers["HX-Trigger"] = _json.dumps({
-        "closeModal": True,
+    # closeModal MUST be last: it removes the triggering element from the DOM,
+    # which would prevent subsequent events from bubbling to document.body.
+    trigger = {
         "showToast": toast,
         "updateXP": {"xp": current_user.xp, "level": current_user.level},
-    })
+    }
+    if learning_just_completed:
+        trigger["learningCompleted"] = True
+    trigger["closeModal"] = True
+    response.headers["HX-Trigger"] = _json.dumps(trigger)
     return response
 
 def _get_user_completed_modules(user_id: int, learning_id: str, db: Session) -> List[int]:
@@ -452,19 +481,18 @@ def complete_learning_module(
         }
 
     # 3. Calculate XP
-    xp_to_add = getattr(module, 'xp_reward', None) 
-    if xp_to_add is None:
-        xp_to_add = getattr(module, 'points', 10) # Fallback to points or default 10
+    xp_to_add = getattr(module, 'xp_reward', None)
+    if not xp_to_add:
+        xp_to_add = 10  # default per-module XP
 
     # 4. Create Completion Record
-    completion = models.ModuleCompletion(
+    db.add(models.ModuleCompletion(
         user_id=current_user.id,
         learning_id=learning_id,
         module_index=module.order,
         xp_earned=xp_to_add,
         completed_at=datetime.now(timezone.utc)
-    )
-    db.add(completion)
+    ))
 
     # 5. Update User XP
     current_user.xp += xp_to_add
@@ -480,8 +508,8 @@ def complete_learning_module(
     done_count = db.query(models.ModuleCompletion).filter(
         models.ModuleCompletion.user_id == current_user.id,
         models.ModuleCompletion.learning_id == learning_id
-    ).count() + 1 
-    
+    ).count() + 1
+
     progress = _calc_progress(done_count, total_count)
 
     lp = db.query(models.LearningProgress).filter(
@@ -489,6 +517,7 @@ def complete_learning_module(
         models.LearningProgress.learning_id == learning_id
     ).first()
 
+    was_already_completed = lp and lp.completed
     if lp:
         lp.progress_pct = progress
         if progress >= 100:
@@ -502,16 +531,27 @@ def complete_learning_module(
             completed=(progress >= 100)
         ))
 
+    # 7. Award learning completion bonus XP the first time all modules are done
+    completion_bonus = 0
+    if progress >= 100 and not was_already_completed:
+        lr = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+        completion_bonus = (lr.xp_reward or 0) if lr else 0
+        if completion_bonus:
+            current_user.xp += completion_bonus
+            new_level, _ = calculate_level(current_user.xp)
+            current_user.level = new_level
+
     db.commit()
-    # Now db.refresh works flawlessly because of the db.merge at the top
     db.refresh(current_user)
 
     return {
         "status": "success",
         "xp_earned": xp_to_add,
+        "completion_bonus": completion_bonus,
         "new_xp": current_user.xp,
         "new_level": current_user.level,
-        "progress_pct": progress
+        "progress_pct": progress,
+        "learning_completed": progress >= 100 and not was_already_completed,
     }
 
 
