@@ -9,9 +9,7 @@
            hx-trigger="keyup changed delay:400ms">
   </div>
 
-  {% set type_bg    = {'article':'#e0f2fe','video':'#fce7f3','course':'#ede9fe','tutorial':'#dcfce7'} %}
-  {% set type_color = {'article':'#0369a1','video':'#9d174d','course':'#6d28d9','tutorial':'#15803d'} %}
-
+ 
   {% if learnings %}
     {% for lr in learnings %}
     <div class="course-card" style="margin-bottom:12px">
@@ -25,11 +23,6 @@
            hx-trigger="click once">
 
         <div style="flex:1">
-          {% if lr.type %}
-          <span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
-                       background:{{ type_bg.get(lr.type, '#f1f5f9') }};
-                       color:{{ type_color.get(lr.type, '#64748b') }};margin-bottom:8px">{{ lr.type }}</span>
-          {% endif %}
 
           <div style="font-weight:600;font-size:15px;margin-bottom:4px">
             {{ lr.title }}

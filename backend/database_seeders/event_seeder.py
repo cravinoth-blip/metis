@@ -39,7 +39,6 @@ async def seed_all_events():
                     event_date=display_date or None,
                     registration_url=evt_data.get("source_url") or None,
                     xp_reward=evt_data.get("xp_reward", 0),
-                    capacity=evt_data.get("capacity") or None,
                     is_active=True,
                 ))
             logger.info(f"Prepared {len(scraped)} scraped events.")
@@ -57,7 +56,6 @@ async def seed_all_events():
                 format=w.get("format"),
                 location=w.get("location"),
                 duration_minutes=w.get("duration_minutes"),
-                capacity=w.get("capacity"),
                 xp_reward=w.get("xp_reward", 0),
                 is_active=True,
             ))
@@ -73,7 +71,6 @@ async def seed_all_events():
                 platform=wb.get("platform"),
                 duration_minutes=wb.get("duration_minutes"),
                 registration_url=wb.get("registration_url"),
-                capacity=wb.get("capacity"),
                 xp_reward=wb.get("xp_reward", 0),
                 is_active=True,
             ))

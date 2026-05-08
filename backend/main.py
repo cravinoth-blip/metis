@@ -155,8 +155,15 @@ async def learning_page(request: Request):
 async def add_module_page(request: Request, learning_id: str = ""):
     if not learning_id:
         return RedirectResponse("/admin", status_code=302)
+    db = SessionLocal()
+    try:
+        learning = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
+        learning_title = learning.title if learning else learning_id
+    finally:
+        db.close()
     return _templates.TemplateResponse("add_module.html", {
-        "request": request, "learning_id": learning_id, "active_page": "admin"
+        "request": request, "learning_id": learning_id,
+        "learning_title": learning_title, "active_page": "admin"
     })
 
 @app.get("/edit-module", response_class=HTMLResponse, include_in_schema=False)

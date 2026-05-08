@@ -54,7 +54,24 @@
     .toast-success { background: #dcfce7; color: #166534; }
     .toast-error   { background: #fee2e2; color: #991b1b; }
     @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
-  </style>
+    
+        /* Fix for missing bullets in getSemanticHTML() inside .ql-editor */
+    #live-preview ul, #preview-body ul {
+      list-style-type: disc !important;
+      padding-left: 1.5rem !important;
+    }
+    #live-preview ol, #preview-body ol {
+      list-style-type: decimal !important;
+      padding-left: 1.5rem !important;
+    }
+    #live-preview li, #preview-body li {
+      list-style-type: inherit !important;
+    }
+    #live-preview ul ul, #preview-body ul ul {
+      list-style-type: circle !important; /* Nested bullets */
+    }
+
+ </style>
 </head>
 <body>
   <div id="toast-container"></div>
@@ -73,7 +90,7 @@
             <div>
               <h2 style="font-size:20px;margin-bottom:4px">New Module</h2>
               <p class="text-secondary text-sm">
-                Learning ID: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">{{ learning_id }}</code>
+                Learning: <strong>{{ learning_title }}</strong>
                 &nbsp;&mdash;&nbsp;
                 <a href="/admin" style="color:var(--primary)">&#8592; Back to Admin</a>
               </p>
@@ -198,7 +215,7 @@
       const dur   = document.getElementById('mod-dur').value || 0;
       const xp    = document.getElementById('mod-xp').value  || 0;
       document.getElementById('preview-title').textContent = title;
-      document.getElementById('preview-meta').textContent  = `⏱ ${dur} min Â· ${xp} XP`;
+      document.getElementById('preview-meta').textContent  = `⏱ ${dur} min · ${xp} XP`;
       document.getElementById('preview-body').innerHTML    = quill.getSemanticHTML()
         || '<p style="color:#64748b;text-align:center;padding:40px">Write some content to see the preview!</p>';
       document.getElementById('preview-overlay').classList.add('open');

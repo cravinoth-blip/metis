@@ -62,14 +62,21 @@ def _render_module_content(content_text: str) -> str:
                 heading = s.get('heading') or ''
                 body   = s.get('body') or s.get('content') or s.get('text') or ''
                 points = s.get('points') or []
-                if heading:
+                if t == 'heading' and body:
+                    parts.append(f'<h4 style="margin:20px 0 8px;font-size:15px;font-weight:700">{body}</h4>')
+                elif heading:
                     parts.append(f'<h4 style="margin:20px 0 8px;font-size:15px;font-weight:700">{heading}</h4>')
-                if t == 'key_points' and points:
-                    items = ''.join(f'<li style="margin-bottom:8px;margin-left:24px;list-style-type:disc">{p}</li>' for p in points if str(p).strip())
-                    parts.append(f'<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0"><div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px">Key Points</div><ul style="margin:0;color:#14532d;line-height:1.6">{items}</ul></div>')
+                if t == 'heading':
+                    pass  # already handled above
+                elif t == 'text' and body:
+                    # body is Quill HTML — output directly so lists, bold, etc. render correctly
+                    parts.append(body)
+                elif t == 'key_points' and points:
+                    items = ''.join(f'<li style="margin-bottom:8px">{p}</li>' for p in points if str(p).strip())
+                    parts.append(f'<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px 20px;border-radius:12px;margin:20px 0"><div style="font-weight:700;margin-bottom:12px;color:#166534;font-size:14px">Key Points</div><ul style="margin:0;padding-left:24px;list-style-type:disc;color:#14532d;line-height:1.6">{items}</ul></div>')
                 elif t == 'steps' and points:
                     items = ''.join(f'<li style="margin-bottom:8px">{p}</li>' for p in points if str(p).strip())
-                    parts.append(f'<ol style="margin:12px 0 12px 24px;color:var(--text-secondary)">{items}</ol>')
+                    parts.append(f'<ol style="margin:12px 0 12px 0;padding-left:24px;color:var(--text-secondary)">{items}</ol>')
                 elif t == 'tip' and body:
                     parts.append(f'<div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">&#128161; <strong>Tip:</strong> {body}</div>')
                 elif t == 'warning' and body:
@@ -77,7 +84,7 @@ def _render_module_content(content_text: str) -> str:
                 elif t == 'example' and body:
                     parts.append(f'<div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;font-size:13.5px">&#128221; <strong>Example:</strong> {body}</div>')
                 elif body:
-                    parts.append(f'<p style="margin-bottom:12px;color:var(--text-secondary)">{body}</p>')
+                    parts.append(body)
             return ''.join(parts) or '<p style="color:var(--text-secondary)">No content.</p>'
     except (ValueError, TypeError):
         pass

@@ -852,13 +852,14 @@ async def html_create_learning(
     category: Optional[str] = Form(None),
     lr_type: Optional[str] = Form(None),
     level: int = Form(1),
-    estimated_duration_min: Optional[int] = Form(None),
+    estimated_duration_min: Optional[str] = Form(None),
     xp_reward: int = Form(0),
     is_mandatory: bool = Form(False),
     tags: Optional[str] = Form(None),
     admin=Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
+    duration = int(estimated_duration_min) if estimated_duration_min and estimated_duration_min.strip() else None
     learning = models.Learning(
         id=str(uuid.uuid4()),
         title=title,
@@ -866,7 +867,7 @@ async def html_create_learning(
         category=category or None,
         type=lr_type or None,
         level=level,
-        estimated_duration_min=estimated_duration_min,
+        estimated_duration_min=duration,
         xp_reward=xp_reward,
         is_mandatory=is_mandatory,
         tags=tags or None,
@@ -890,13 +891,14 @@ async def html_update_learning_ui(
     category: Optional[str] = Form(None),
     lr_type: Optional[str] = Form(None),
     level: int = Form(1),
-    estimated_duration_min: Optional[int] = Form(None),
+    estimated_duration_min: Optional[str] = Form(None),
     xp_reward: int = Form(0),
     is_mandatory: bool = Form(False),
     tags: Optional[str] = Form(None),
     admin=Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
+    duration = int(estimated_duration_min) if estimated_duration_min and estimated_duration_min.strip() else None
     lr = db.query(models.Learning).filter(models.Learning.id == learning_id).first()
     if not lr:
         raise HTTPException(status_code=404, detail="Not found")
@@ -905,7 +907,7 @@ async def html_update_learning_ui(
     lr.category = category or None
     lr.type = lr_type or None
     lr.level = level
-    lr.estimated_duration_min = estimated_duration_min
+    lr.estimated_duration_min = duration
     lr.xp_reward = xp_reward
     lr.is_mandatory = is_mandatory
     lr.tags = tags or None

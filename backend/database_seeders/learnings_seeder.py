@@ -1,9 +1,8 @@
 import logging
 import re
 from uuid import uuid4
-
 from database import SessionLocal
-from default_data.course_data import COURSES 
+from default_data.learnings_data import COURSES 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,60 +28,60 @@ def parse_level(level_str: str) -> int:
     mapping = {"Beginner": 1, "Intermediate": 2, "Advanced": 3}
     return mapping.get(level_str, 1)
 
-def sections_to_markdown(sections: list[dict]) -> str:
+def sections_to_html(sections: list[dict]) -> str:
     """
-    Converts the new 'sections' JSON list into a markdown string.
+    Converts the new 'sections' JSON list into an HTML string suitable for Quill WYSIWYG.
     Supported types: text, key_points, tip, warning, example, steps.
     """
-    md_parts: list[str] = []
+    html_parts: list[str] = []
     
     for s in sections or []:
         t = (s.get("type") or "").lower()
         heading = s.get("heading", "").strip()
         body = s.get("body", "").strip()
         points = s.get("points") or []
-
-        # Add the heading if it exists
+        
+        # Add the heading if it exists (Using h3 to match the old ### markdown heading)
         if heading:
-            md_parts.append(f"### {heading}")
-
-        # Render the body/points based on the type
+            html_parts.append(f"<h3>{heading}</h3>")
+            
+        # Render the body/points based on the type into Quill-supported HTML
         if t == "text":
             if body:
-                md_parts.append(body)
+                html_parts.append(f"<p>{body}</p>")
                 
         elif t == "key_points":
             if points:
-                # FIX: Join points with a single newline so they form a proper Markdown list
-                bullets = "\n".join([f"- {p}" for p in points if str(p).strip()])
-                md_parts.append(bullets)
+                # Wrap in ul/li for unordered lists
+                list_items = "".join([f"<li>{p}</li>" for p in points if str(p).strip()])
+                html_parts.append(f"<ul>{list_items}</ul>")
                 
         elif t == "steps":
             if points:
-                # FIX: Join numbered steps with a single newline
-                steps = "\n".join([f"{i+1}. {p}" for i, p in enumerate(points) if str(p).strip()])
-                md_parts.append(steps)
+                # Wrap in ol/li for numbered steps
+                list_items = "".join([f"<li>{p}</li>" for p in points if str(p).strip()])
+                html_parts.append(f"<ol>{list_items}</ol>")
                 
         elif t == "tip":
             if body:
-                md_parts.append(f"> 💡 **Tip:** {body}")
+                html_parts.append(f"<blockquote><strong>💡 Tip:</strong> {body}</blockquote>")
                 
         elif t == "warning":
             if body:
-                md_parts.append(f"> ⚠️ **Warning:** {body}")
+                html_parts.append(f"<blockquote><strong>⚠️ Warning:</strong> {body}</blockquote>")
                 
         elif t == "example":
             if body:
-                md_parts.append(f"> 📝 **Example:** {body}")
+                html_parts.append(f"<blockquote><strong>📝 Example:</strong> {body}</blockquote>")
                 
         else:
             # Safe fallback for unknown types
             raw = {k: v for k, v in s.items() if k not in ["type", "heading"]}
             if raw:
-                md_parts.append(f"> _Note:_ {raw}")
+                html_parts.append(f"<p><em>Note:</em> {raw}</p>")
                 
-    return "\n\n".join(md_parts).strip()
-
+    # Join without extra newlines since block-level HTML tags handle spacing naturally in Quill
+    return "".join(html_parts).strip()
 
 async def seed_learnings():
     """Seed initial learnings and learning modules from course_data.py if DB is empty."""
@@ -94,7 +93,7 @@ async def seed_learnings():
         if db.query(Learning).count() > 0:
             logger.info("Learnings table not empty — skipping seeding.")
             return
-
+            
         logger.info("Seeding initial learnings and modules from course_data.py...")
         
         for course_key, course_data in COURSES.items():
@@ -124,7 +123,7 @@ async def seed_learnings():
                     learning_id=learning_id,
                     title=mod_data.get("title"),
                     description=None, # Can be derived or left null based on your schema
-                    content_text=sections_to_markdown(mod_data.get("sections", [])),
+                    content_text=sections_to_html(mod_data.get("sections", [])),
                     content_url=None,
                     order=mod_data.get("index", 0),
                     duration_min=parse_duration(mod_data.get("duration", "")),
@@ -132,11 +131,10 @@ async def seed_learnings():
                     is_active=True,
                 )
                 db.add(module_record)
-
+                
         # Commit everything to the database
         db.commit()
         logger.info(f"✅ Seeding completed successfully. Added {len(COURSES)} courses.")
-
     except Exception as e:
         logger.error(f"Seeding error: {e}")
         db.rollback()

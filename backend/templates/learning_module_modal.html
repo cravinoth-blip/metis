@@ -10,15 +10,17 @@
     </div>
     {% endif %}
 
-    <div style="font-size:14px;line-height:1.7;max-height:55vh;overflow-y:auto;padding-right:8px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-      {{ content_html | safe }}
-      {% if module.content_url %}
-      <div style="margin-top:20px">
-        <a href="{{ module.content_url }}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">
-          Open Resource &#8599;
-        </a>
+    <div class="ql-snow" style="border:none;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div class="ql-editor" style="padding:0;max-height:55vh;overflow-y:auto;padding-right:8px;font-size:14px;line-height:1.7">
+        {{ content_html | safe }}
+        {% if module.content_url %}
+        <div style="margin-top:20px">
+          <a href="{{ module.content_url }}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">
+            Open Resource &#8599;
+          </a>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
 
     <div style="margin-top:20px;display:flex;align-items:center;gap:12px">

@@ -14,17 +14,16 @@
   <div class="card" style="padding:0;overflow:hidden">
     <table class="table">
       <thead>
-        <tr><th>Title</th><th>Category</th><th>Type</th><th>Level</th><th>Modules</th><th>Duration</th><th>XP</th><th>Actions</th></tr>
+        <tr><th>Title</th><th>Category</th><th>Level</th><th>Modules</th><th>Duration</th><th>XP</th><th>Actions</th></tr>
       </thead>
       <tbody>
         {% for lr in learnings %}
         <tr id="lr-row-{{ lr.id }}">
           <td style="font-weight:500">{{ lr.title }}</td>
-          <td>{{ lr.category or '&#8212;' }}</td>
-          <td>{{ lr.type or '&#8212;' }}</td>
+          <td>{{ lr.category or '-' }}</td>
           <td>{{ lr.level }}</td>
           <td style="text-align:center;font-weight:600">{{ lr.module_count }}</td>
-          <td>{{ (lr.estimated_duration_min | string + ' min') if lr.estimated_duration_min else '&#8212;' }}</td>
+          <td>{{ (lr.estimated_duration_min | string + ' min') if lr.estimated_duration_min else '' }}</td>
           <td>{{ lr.xp_reward }}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm"
@@ -35,8 +34,9 @@
                     hx-get="/api/admin/ui/learnings/{{ lr.id }}/modules"
                     hx-target="#modal-container"
                     style="margin-right:4px">Modules</button>
-            <a href="/add-module?learning_id={{ lr.id }}" class="btn btn-secondary btn-sm" style="margin-right:4px">+ Add</a>
-            <button class="btn btn-danger btn-sm"
+<button class="btn btn-secondary btn-sm" 
+        onclick="window.location.href='/add-module?learning_id={{ lr.id }}'"
+        style="margin-right:4px">+ Add</button>            <button class="btn btn-danger btn-sm"
                     hx-delete="/api/admin/ui/learnings/{{ lr.id }}"
                     hx-confirm="Deactivate this learning resource?"
                     hx-target="#lr-row-{{ lr.id }}"

@@ -23,16 +23,7 @@
           <input name="category" class="form-input" placeholder="e.g. Prompt Engineering" value="{{ learning.category if learning else '' }}">
         </div>
         <div class="form-group">
-          <label class="form-label">Type</label>
-          <select name="lr_type" class="form-input form-select">
-            <option value="">&#8212; select &#8212;</option>
-            {% for t in ['article','video','course','tutorial','podcast','book','other'] %}
-            <option {% if learning and learning.type == t %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Level (1&#8211;5)</label>
+          <label class="form-label">Level (1-5)</label>
           <input type="number" name="level" class="form-input" min="1" max="5" value="{{ learning.level if learning else 1 }}">
         </div>
         <div class="form-group">
@@ -42,10 +33,6 @@
         <div class="form-group">
           <label class="form-label">XP Reward</label>
           <input type="number" name="xp_reward" class="form-input" min="0" value="{{ learning.xp_reward if learning else 0 }}">
-        </div>
-        <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:24px">
-          <input type="checkbox" name="is_mandatory" value="true" id="lr-mandatory" {% if learning and learning.is_mandatory %}checked{% endif %} style="width:auto">
-          <label for="lr-mandatory" class="form-label" style="margin:0">Mandatory</label>
         </div>
       </div>
       <div class="form-group">
