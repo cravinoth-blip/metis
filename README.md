@@ -1,6 +1,6 @@
 # Metis – Your Learning Companion
 
-A gamified AI learning platform for employees. Built with FastAPI and Jinja2 templates — no separate frontend build step required.
+A gamified AI learning platform for employees. Built with FastAPI and Jinja2 templates.
 
 ## Running the project
 
