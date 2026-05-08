@@ -2,7 +2,9 @@ import os
 import sys
 import traceback
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Point at the backend directory — single source of truth
+_backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'backend')
+sys.path.insert(0, _backend_dir)
 
 from fastapi import FastAPI
 
@@ -13,14 +15,6 @@ _import_error: str | None = None
 _import_step = "init"
 
 try:
-    _import_step = "database"
-    import database
-    _import_step = "models"
-    import models
-    _import_step = "auth"
-    import auth
-    _import_step = "routers"
-    from routers import auth_router, users, quiz, admin, events, courses
     _import_step = "main"
     from main import app as _main_app
     app = _main_app

@@ -29,7 +29,7 @@
       {% else %}
       <span id="timer-msg" class="text-sm text-secondary">Read for 5s to complete&hellip;</span>
       <button id="complete-btn" class="btn btn-primary" style="margin-left:auto" disabled
-              hx-post="/api/courses/ui/learnings/{{ learning_id }}/modules/{{ module.id }}/complete"
+              hx-post="/api/learnings/ui/learnings/{{ learning_id }}/modules/{{ module.id }}/complete"
               hx-target="#learning-container"
               hx-swap="outerHTML">
         Mark complete

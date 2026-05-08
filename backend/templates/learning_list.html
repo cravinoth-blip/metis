@@ -3,7 +3,7 @@
   <div style="margin-bottom:20px">
     <input type="text" name="q" value="{{ q }}" placeholder="Search resources&hellip;"
            class="form-input" style="max-width:360px"
-           hx-get="/api/courses/ui/learnings"
+           hx-get="/api/learnings/ui/learnings"
            hx-target="#learning-container"
            hx-swap="outerHTML"
            hx-trigger="keyup changed delay:400ms">
@@ -19,7 +19,7 @@
       <div class="course-header"
            style="cursor:pointer"
            onclick="toggleModules('{{ lr.id }}', this)"
-           hx-get="/api/courses/ui/learnings/{{ lr.id }}/modules"
+           hx-get="/api/learnings/ui/learnings/{{ lr.id }}/modules"
            hx-target="#mods-{{ lr.id }}"
            hx-swap="innerHTML"
            hx-trigger="click once">

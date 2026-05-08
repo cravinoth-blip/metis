@@ -13,13 +13,13 @@ from database import get_db
 import models
 import schemas
 from auth import get_current_user, get_current_admin, calculate_level
-from default_data.course_data import COURSES
+# from default_data.course_data import COURSES
 
 
 class ModuleReorderRequest(BaseModel):
     order: List[str]
 
-router = APIRouter(tags=["courses"])
+router = APIRouter(tags=["learnings"])
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
 

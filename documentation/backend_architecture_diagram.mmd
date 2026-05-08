@@ -7,11 +7,9 @@
 }
 }}%%
 flowchart TD
-    %% External Clients
-    UI[Frontend]
 
     %% Backend Layer
-    subgraph Backend [Application Layer - FastAPI]
+    subgraph Backend [Backend - FastAPI]
         direction TB
 
         %% API Routers
@@ -20,13 +18,11 @@ flowchart TD
             Users["/api/users<br/>Profile, Stats, Log Usage"]
             Quiz["/api/quiz<br/>List, Submit, History"]
             Events["/api/events<br/>List, Register"]
-            Courses["/api/courses<br/>Modules, Completion"]
+            Courses["/api/learnings<br/>Modules, Completion"]
             Tools["/api/ai-tools<br/>Catalogue"]
             Admin["/api/admin<br/>CRUD, Analytics, Scrape"]
         end
 
-        %% Background Tasks
-        Scraper["Event Scraper Background Task<br/>Runs every 6 hours"]
 
         %% Security
         Security[JWT Middleware & Role Validation]
@@ -35,14 +31,11 @@ flowchart TD
     %% Data Layer
     subgraph DataLayer [Data Layer]
         ORM[SQLAlchemy ORM]
-        DB[(PostgreSQL / SQLite)]
+        DB[(SQL Database)]
     end
 
-    %% External Sources
-    ExtEvents[External Event Sources]
 
     %% Connections
-    UI -->|HTTPS / Bearer Token| Security
 
     Security --> Auth
     Security --> Users
@@ -60,8 +53,5 @@ flowchart TD
     Tools --> ORM
     Admin --> ORM
 
-    Admin -.->|Triggers Manual Scrape| Scraper
-    Scraper -->|HTTP GET| ExtEvents
-    Scraper -->|Merge Data| ORM
 
     ORM --> DB

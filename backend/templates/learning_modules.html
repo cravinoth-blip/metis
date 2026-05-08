@@ -2,7 +2,7 @@
 {% set done = m.order in completed_indices %}
 <div class="module-item"
      style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer"
-     hx-get="/api/courses/ui/modules/{{ m.id }}?learning_id={{ learning_id }}"
+     hx-get="/api/learnings/ui/modules/{{ m.id }}?learning_id={{ learning_id }}"
      hx-target="#modal-container"
      hx-swap="innerHTML">
   <span style="font-size:16px">{{ '✅' if done else '📄' }}</span>
