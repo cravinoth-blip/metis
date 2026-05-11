@@ -26,11 +26,7 @@
                     hx-get="/api/admin/ui/badges/form?badge_id={{ b.id }}"
                     hx-target="#modal-container"
                     style="margin-right:4px">Edit</button>
-            <button class="btn btn-danger btn-sm"
-                    hx-delete="/api/admin/ui/badges/{{ b.id }}"
-                    hx-confirm="Delete this badge?"
-                    hx-target="#badge-row-{{ b.id }}"
-                    hx-swap="outerHTML">Delete</button>
+           
           </td>
         </tr>
         {% else %}
