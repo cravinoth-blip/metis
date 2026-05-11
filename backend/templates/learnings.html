@@ -24,7 +24,7 @@
           <td>{{ lr.level }}</td>
           <td style="text-align:center;font-weight:600">{{ lr.module_count }}</td>
           <td>{{ (lr.estimated_duration_min | string + ' min') if lr.estimated_duration_min else '' }}</td>
-          <td>{{ lr.xp_reward }}</td>
+          <td>{{ lr.module_xp }}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm"
                     hx-get="/api/admin/ui/learnings/form?learning_id={{ lr.id }}"
@@ -34,9 +34,7 @@
                     hx-get="/api/admin/ui/learnings/{{ lr.id }}/modules"
                     hx-target="#modal-container"
                     style="margin-right:4px">Modules</button>
-<button class="btn btn-secondary btn-sm" 
-        onclick="window.location.href='/add-module?learning_id={{ lr.id }}'"
-        style="margin-right:4px">+ Add</button>            <button class="btn btn-danger btn-sm"
+            <button class="btn btn-danger btn-sm"
                     hx-delete="/api/admin/ui/learnings/{{ lr.id }}"
                     hx-confirm="Deactivate this learning resource?"
                     hx-target="#lr-row-{{ lr.id }}"

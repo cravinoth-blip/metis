@@ -1,15 +1,31 @@
 <div id="learning-container" style="padding:24px">
 
-  <div style="margin-bottom:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap">
     <input type="text" name="q" value="{{ q }}" placeholder="Search resources&hellip;"
            class="form-input" style="max-width:360px"
-           hx-get="/api/learnings/ui/learnings"
+           hx-get="/api/learnings/ui/learnings?tab={{ tab }}"
            hx-target="#learning-container"
            hx-swap="outerHTML"
            hx-trigger="keyup changed delay:400ms">
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-sm {% if tab == 'not-started' %}pill-active{% endif %}"
+              hx-get="/api/learnings/ui/learnings?tab=not-started&q={{ q }}"
+              hx-target="#learning-container" hx-swap="outerHTML">
+        Not Started{% if not_started_count %} ({{ not_started_count }}){% endif %}
+      </button>
+      <button class="btn btn-sm {% if tab == 'in-progress' %}pill-active{% endif %}"
+              hx-get="/api/learnings/ui/learnings?tab=in-progress&q={{ q }}"
+              hx-target="#learning-container" hx-swap="outerHTML">
+        In Progress{% if in_progress_count %} ({{ in_progress_count }}){% endif %}
+      </button>
+      <button class="btn btn-sm {% if tab == 'completed' %}pill-active{% endif %}"
+              hx-get="/api/learnings/ui/learnings?tab=completed&q={{ q }}"
+              hx-target="#learning-container" hx-swap="outerHTML">
+        Completed{% if completed_count %} ({{ completed_count }}){% endif %}
+      </button>
+    </div>
   </div>
 
- 
   {% if learnings %}
     {% for lr in learnings %}
     <div class="course-card" style="margin-bottom:12px">
@@ -51,7 +67,9 @@
     </div>
     {% endfor %}
   {% else %}
-    <div class="empty-state">No resources found.</div>
+    <div class="empty-state">
+      {% if tab == 'completed' %}No completed learnings yet.{% else %}No learning resources found.{% endif %}
+    </div>
   {% endif %}
 
 </div>

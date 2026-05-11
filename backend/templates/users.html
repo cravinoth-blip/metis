@@ -2,16 +2,36 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
     <input type="text" name="q" value="{{ q }}" placeholder="Search users&#8230;"
            class="form-input search-input" style="max-width:300px"
-           hx-get="/api/admin/ui/tabs/users"
+           hx-get="/api/admin/ui/tabs/users?sort={{ sort }}&dir={{ dir }}"
            hx-target="#users-tab-content"
            hx-swap="outerHTML"
            hx-trigger="keyup changed delay:400ms">
-     </div>
+  </div>
+
+  {% macro sort_th(label, col) %}
+    {% set active = (sort == col) %}
+    {% set next_dir = 'asc' if (active and dir == 'desc') else ('desc' if active else 'asc') %}
+    <th style="white-space:nowrap;cursor:pointer;user-select:none"
+        hx-get="/api/admin/ui/tabs/users?sort={{ col }}&dir={{ next_dir }}&q={{ q }}"
+        hx-target="#users-tab-content"
+        hx-swap="outerHTML">
+      {{ label }}
+      {% if active %}{{ '▲' if dir == 'asc' else '▼' }}{% else %}<span style="opacity:.3">▲</span>{% endif %}
+    </th>
+  {% endmacro %}
 
   <div class="card" style="padding:0;overflow:hidden">
     <table class="table">
       <thead>
-        <tr><th>Name</th><th>Email</th><th>Dept</th><th>XP</th><th>Level</th><th>Admin</th><th>Actions</th></tr>
+        <tr>
+          {{ sort_th('Name', 'name') }}
+          {{ sort_th('Email', 'email') }}
+          {{ sort_th('Dept', 'dept') }}
+          {{ sort_th('XP', 'xp') }}
+          {{ sort_th('Level', 'level') }}
+          {{ sort_th('Admin', 'admin') }}
+          <th>Actions</th>
+        </tr>
       </thead>
       <tbody>
         {% for u in users %}

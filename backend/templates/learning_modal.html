@@ -30,10 +30,6 @@
           <label class="form-label">Est. Duration (min)</label>
           <input type="number" name="estimated_duration_min" class="form-input" min="1" value="{{ learning.estimated_duration_min if learning and learning.estimated_duration_min else '' }}">
         </div>
-        <div class="form-group">
-          <label class="form-label">XP Reward</label>
-          <input type="number" name="xp_reward" class="form-input" min="0" value="{{ learning.xp_reward if learning else 0 }}">
-        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Tags (comma-separated)</label>

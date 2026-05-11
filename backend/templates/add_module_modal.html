@@ -1,0 +1,84 @@
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+
+<div class="modal-overlay">
+  <div class="modal" style="width:720px">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">New Module</h3>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div>
+        <label class="form-label" style="font-size:12px">Module Title *</label>
+        <input id="amod-title" class="form-input" placeholder="e.g. Core Concepts">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:12px">Duration (min)</label>
+        <input id="amod-dur" type="number" class="form-input" value="10" min="0">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:12px">XP Reward</label>
+        <input id="amod-xp" type="number" class="form-input" value="50" min="0">
+      </div>
+    </div>
+
+    <div style="border:1px solid var(--border,#e5e7eb);border-radius:8px;overflow:hidden;margin-bottom:16px">
+      <div id="amod-editor" style="height:300px"></div>
+    </div>
+
+    <div style="text-align:right">
+      <button id="amod-save-btn" class="btn btn-primary">Save &amp; Publish</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+(function () {
+  const learningId = '{{ learning_id }}';
+
+  const quill = new Quill('#amod-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['blockquote', 'code-block'],
+        ['link'],
+        ['clean'],
+      ],
+    },
+  });
+
+  document.getElementById('amod-save-btn').addEventListener('click', async () => {
+    const title = document.getElementById('amod-title').value.trim();
+    if (!title) {
+      document.getElementById('amod-title').focus();
+      return;
+    }
+
+    const btn = document.getElementById('amod-save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      const res = await fetch(`/api/admin/learnings/${learningId}/modules/build-html`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          duration: parseInt(document.getElementById('amod-dur').value) || 0,
+          xp_reward: parseInt(document.getElementById('amod-xp').value) || 50,
+          content_text: quill.getSemanticHTML(),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+      document.getElementById('modal-container').innerHTML = '';
+      document.body.dispatchEvent(new CustomEvent('showToast', { detail: 'Module saved!' }));
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Save & Publish';
+      document.body.dispatchEvent(new CustomEvent('showToast', { detail: { value: e.message, type: 'error' } }));
+    }
+  });
+})();
+</script>

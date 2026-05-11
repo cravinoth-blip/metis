@@ -81,7 +81,7 @@
     {% include 'sidebar.html' %}
 
     <div id="main-wrapper">
-      {% set page_title = 'Edit Module' %}
+      {% set page_title %}<a href="/admin" style="color:inherit;text-decoration:none">&#8592; Back to Admin</a>{% endset %}
       {% include 'topbar.html' %}
 
       <main id="content">
@@ -90,11 +90,6 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
             <div>
               <h2 style="font-size:20px;margin-bottom:4px">Edit Module</h2>
-              <p class="text-secondary text-sm">
-                <span id="module-subtitle">Loading…</span>
-                &nbsp;&mdash;&nbsp;
-                <a href="/admin" style="color:var(--primary)">&#8592; Back to Admin</a>
-              </p>
             </div>
             <div style="display:flex;gap:8px">
               <button id="preview-btn" class="btn btn-secondary">Preview</button>
@@ -304,7 +299,6 @@
       document.getElementById('mod-title').value = existing.title      || '';
       document.getElementById('mod-dur').value   = existing.duration_min ?? '';
       document.getElementById('mod-xp').value    = existing.xp_reward  ?? 0;
-      document.getElementById('module-subtitle').textContent = existing.title || MODULE_ID;
 
       // Load content into Quill — handle both raw HTML and legacy JSON sections
       if (existing.content_text) {

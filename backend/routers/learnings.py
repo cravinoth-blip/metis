@@ -122,11 +122,25 @@ def _learning_rows(user_id: int, db: Session, q: str = '') -> list:
 def ui_learning_list(
     request: Request,
     q: str = '',
+    tab: str = 'not-started',
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    learnings = _learning_rows(current_user.id, db, q)
-    return _templates.TemplateResponse("learning_list.html", {"request": request, "learnings": learnings, "q": q})
+    all_learnings = _learning_rows(current_user.id, db, q)
+    not_started = [l for l in all_learnings if not l['is_completed'] and l['progress_pct'] == 0]
+    in_progress = [l for l in all_learnings if not l['is_completed'] and l['progress_pct'] > 0]
+    completed   = [l for l in all_learnings if l['is_completed']]
+    if tab == 'completed':
+        learnings = completed
+    elif tab == 'in-progress':
+        learnings = in_progress
+    else:
+        learnings = not_started
+    return _templates.TemplateResponse("learning_list.html", {
+        "request": request, "learnings": learnings, "q": q, "tab": tab,
+        "not_started_count": len(not_started), "in_progress_count": len(in_progress),
+        "completed_count": len(completed),
+    })
 
 
 @router.get("/ui/learnings/{learning_id}/modules", response_class=HTMLResponse)
@@ -256,7 +270,15 @@ def ui_complete_module(
         db.commit()
         db.refresh(current_user)
 
-    learnings = _learning_rows(current_user.id, db)
+    all_learnings = _learning_rows(current_user.id, db)
+    not_started = [l for l in all_learnings if not l['is_completed'] and l['progress_pct'] == 0]
+    in_progress = [l for l in all_learnings if not l['is_completed'] and l['progress_pct'] > 0]
+    completed   = [l for l in all_learnings if l['is_completed']]
+    tab = 'completed' if learning_just_completed else 'in-progress'
+    if tab == 'completed':
+        learnings = completed
+    else:
+        learnings = in_progress
     total_xp = xp_earned + completion_bonus
     if not xp_earned:
         toast = "Already completed"
@@ -267,7 +289,11 @@ def ui_complete_module(
     else:
         toast = f"Module complete! +{xp_earned} XP"
 
-    response = _templates.TemplateResponse("learning_list.html", {"request": request, "learnings": learnings, "q": ""})
+    response = _templates.TemplateResponse("learning_list.html", {
+        "request": request, "learnings": learnings, "q": "", "tab": tab,
+        "not_started_count": len(not_started), "in_progress_count": len(in_progress),
+        "completed_count": len(completed),
+    })
     # closeModal MUST be last: it removes the triggering element from the DOM,
     # which would prevent subsequent events from bubbling to document.body.
     trigger = {

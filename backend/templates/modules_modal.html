@@ -69,7 +69,7 @@
     const ids = [...tbody.querySelectorAll('.draggable-module')].map(r => r.dataset.id);
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await fetch(`/api/courses/learnings/${learningId}/modules/reorder`, {
+      await fetch(`/api/admin/learnings/${learningId}/modules/reorder`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order: ids }),

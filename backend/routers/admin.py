@@ -698,23 +698,33 @@ async def html_tab_overview(
 
 @router.get("/ui/tabs/users", response_class=HTMLResponse)
 async def html_tab_users(
-    request: Request, 
-    q: str = "", 
+    request: Request,
+    q: str = "",
+    sort: str = "xp",
+    dir: str = "desc",
     admin=Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = db.query(models.User)
-    
-    # Simple search filtering equivalent to your frontend search logic
     if q:
         search_term = f"%{q.lower()}%"
         query = query.filter(
-            func.lower(models.User.full_name).like(search_term) | 
+            func.lower(models.User.full_name).like(search_term) |
             func.lower(models.User.email).like(search_term)
         )
-        
-    users = query.order_by(models.User.xp.desc()).all()
-    return templates.TemplateResponse("users.html", {"request": request, "users": users, "q": q})
+
+    sort_col_map = {
+        "name": models.User.full_name,
+        "email": models.User.email,
+        "dept": models.User.department,
+        "xp": models.User.xp,
+        "level": models.User.level,
+        "admin": models.User.is_admin,
+    }
+    sort_col = sort_col_map.get(sort, models.User.xp)
+    order = sort_col.asc() if dir == "asc" else sort_col.desc()
+    users = query.order_by(order).all()
+    return templates.TemplateResponse("users.html", {"request": request, "users": users, "q": q, "sort": sort, "dir": dir})
 
 
 @router.get("/ui/users/form", response_class=HTMLResponse)
@@ -816,7 +826,9 @@ async def html_tab_learnings(
         )
     learnings = query.order_by(models.Learning.created_at.desc()).all()
     for lr in learnings:
-        lr.module_count = sum(1 for m in lr.modules if m.is_active)
+        active_modules = [m for m in lr.modules if m.is_active]
+        lr.module_count = len(active_modules)
+        lr.module_xp = sum(m.xp_reward for m in active_modules)
     return templates.TemplateResponse("learnings.html", {"request": request, "learnings": learnings, "q": q})
 
 
@@ -948,6 +960,32 @@ async def html_learning_modules_modal(
         .all()
     )
     return templates.TemplateResponse("modules_modal.html", {"request": request, "modules": modules, "learning_id": learning_id})
+
+
+@router.get("/ui/learnings/{learning_id}/modules/form", response_class=HTMLResponse)
+async def html_add_module_modal(
+    request: Request,
+    learning_id: str,
+    admin=Depends(get_current_admin),
+):
+    return templates.TemplateResponse("add_module_modal.html", {"request": request, "learning_id": learning_id})
+
+
+@router.post("/learnings/{learning_id}/modules/reorder")
+def reorder_learning_modules(
+    learning_id: str,
+    data: dict,
+    _=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    order: list[str] = data.get("order", [])
+    for position, module_id in enumerate(order):
+        db.query(models.LearningModule).filter(
+            models.LearningModule.id == module_id,
+            models.LearningModule.learning_id == learning_id,
+        ).update({"order": position, "updated_at": datetime.now(timezone.utc)})
+    db.commit()
+    return {"reordered": len(order)}
 
 
 @router.delete("/ui/learning-modules/{module_id}", response_class=HTMLResponse)
