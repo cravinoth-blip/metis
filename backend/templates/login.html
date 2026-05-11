@@ -75,11 +75,10 @@
       $('form-login').classList.remove('hidden');
     });
 
-    async function saveAndRedirect(token) {
-      localStorage.setItem('metis_token', token);
-      const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+    // After a successful auth API call the server sets HttpOnly auth cookies.
+    // We only save non-sensitive display data (avatar, name, XP) to localStorage.
+    async function saveUserAndRedirect() {
+      const res = await fetch('/api/auth/me');
       if (res.ok) localStorage.setItem('metis_user', JSON.stringify(await res.json()));
       location.href = '/skillgames';
     }
@@ -99,11 +98,11 @@
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: $('login-email').value, password: $('login-password').value })
+          body: JSON.stringify({ email: $('login-email').value, password: $('login-password').value }),
         });
         const data = await res.json();
         if (!res.ok) { showError('login-error', data.detail || 'Login failed'); return; }
-        await saveAndRedirect(data.access_token);
+        await saveUserAndRedirect();
       } catch (e) {
         showError('login-error', 'Network error');
       } finally {
@@ -133,11 +132,11 @@
             email: $('reg-email').value,
             department: $('reg-dept').value,
             password: $('reg-password').value,
-          })
+          }),
         });
         const data = await res.json();
         if (!res.ok) { showError('reg-error', data.detail || 'Registration failed'); return; }
-        await saveAndRedirect(data.access_token);
+        await saveUserAndRedirect();
       } catch (e) {
         showError('reg-error', 'Network error');
       } finally {
@@ -150,9 +149,6 @@
     ['login-email', 'login-password'].forEach(id => {
       $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('login-btn').click(); });
     });
-
-    // If already logged in, redirect
-    if (localStorage.getItem('metis_token')) location.href = '/dashboard';
   </script>
 </body>
 </html>

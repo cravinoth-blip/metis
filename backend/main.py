@@ -1,21 +1,33 @@
+import hashlib
+from datetime import datetime, timedelta
+from pathlib import Path
+import logging
+import os as _os
+
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from contextlib import asynccontextmanager
+import uvicorn
+
 from database import engine, Base, SessionLocal
 from routers import auth_router, users, quiz, admin, events, learnings, ai_tools
 import models
 from scraper import scrape_ai_events
-from pathlib import Path
-import logging
-import uvicorn
 from database_seeders.main_seeder import seed_database
+from auth import (
+    get_optional_user,
+    set_auth_cookies,
+    create_access_token,
+    create_refresh_token,
+    REFRESH_COOKIE,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 
 async def refresh_events():
@@ -24,10 +36,8 @@ async def refresh_events():
     db = SessionLocal()
     try:
         from models import Event
-        from scraper import scrape_news_only
         events_data = await scrape_ai_events()
 
-        # Replace all existing news events with fresh ones
         db.query(Event).filter(Event.event_type == "news").delete()
 
         added = 0
@@ -54,6 +64,7 @@ async def refresh_events():
 
 _startup_error: str | None = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _startup_error
@@ -72,10 +83,8 @@ app = FastAPI(
     title="Metis API",
     description="Gamified AI Learning Platform API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
-
-import os as _os
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -123,36 +132,128 @@ app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 _templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
+# ---------------------------------------------------------------------------
+# Auth helper for server-side HTML route protection
+# ---------------------------------------------------------------------------
+
+def _protected_page(request: Request, template_name: str, ctx: dict | None = None):
+    """Return the requested page if the user is authenticated.
+
+    On every request it first checks for a valid access-token cookie. If that
+    is missing or expired it attempts a silent refresh using the refresh-token
+    cookie, rotates both tokens, and serves the page with fresh cookies set.
+    Only when both tokens are absent or invalid does it redirect to /login.
+    """
+    if ctx is None:
+        ctx = {}
+    ctx["request"] = request
+
+    # Fast path: valid access token present
+    user = get_optional_user(request)
+    if user:
+        return _templates.TemplateResponse(template_name, ctx)
+
+    # Slow path: try transparent token refresh
+    raw_refresh = request.cookies.get(REFRESH_COOKIE)
+    if raw_refresh:
+        token_hash = hashlib.sha256(raw_refresh.encode()).hexdigest()
+        db = SessionLocal()
+        try:
+            db_rt = db.query(models.RefreshToken).filter(
+                models.RefreshToken.token_hash == token_hash,
+                models.RefreshToken.is_revoked == False,  # noqa: E712
+                models.RefreshToken.expires_at > datetime.utcnow(),
+            ).first()
+            if db_rt:
+                page_user = db.query(models.User).filter(
+                    models.User.id == db_rt.user_id,
+                    models.User.is_active == True,  # noqa: E712
+                ).first()
+                if page_user:
+                    new_access = create_access_token({"sub": str(page_user.id)})
+                    new_raw_refresh, new_hash = create_refresh_token()
+                    db_rt.is_revoked = True
+                    db.add(models.RefreshToken(
+                        user_id=page_user.id,
+                        token_hash=new_hash,
+                        expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                    ))
+                    db.commit()
+                    response = _templates.TemplateResponse(template_name, ctx)
+                    set_auth_cookies(response, new_access, new_raw_refresh)
+                    return response
+        finally:
+            db.close()
+
+    return RedirectResponse("/login", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# HTML routes
+# ---------------------------------------------------------------------------
+
+@app.get("/", include_in_schema=False)
+async def root(request: Request):
+    if get_optional_user(request):
+        return RedirectResponse("/skillgames", status_code=302)
+    return RedirectResponse("/login", status_code=302)
+
+
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
 async def login_page(request: Request):
+    # Redirect already-authenticated users away from the login page
+    if get_optional_user(request):
+        return RedirectResponse("/dashboard", status_code=302)
     return _templates.TemplateResponse("login.html", {"request": request})
 
-@app.get("/learning-template", response_class=HTMLResponse, include_in_schema=False)
-async def learning_template(request: Request):
-    return _templates.TemplateResponse("add_learning_module.html", {"request": request})
-
-@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
-async def admin_page(request: Request):
-    return _templates.TemplateResponse("admin_base.html", {"request": request, "active_page": "admin"})
-
-@app.get("/aitools", response_class=HTMLResponse, include_in_schema=False)
-async def aitools_page(request: Request):
-    return _templates.TemplateResponse("aitools_page.html", {"request": request, "active_page": "aitools"})
 
 @app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard_page(request: Request):
-    return _templates.TemplateResponse("dashboard_page.html", {"request": request, "active_page": "dashboard"})
+    return _protected_page(request, "dashboard_page.html", {"active_page": "dashboard"})
+
 
 @app.get("/skillgames", response_class=HTMLResponse, include_in_schema=False)
 async def skillgames_page(request: Request):
-    return _templates.TemplateResponse("skillgames_page.html", {"request": request, "active_page": "skillgames"})
+    return _protected_page(request, "skillgames_page.html", {"active_page": "skillgames"})
+
 
 @app.get("/learning", response_class=HTMLResponse, include_in_schema=False)
 async def learning_page(request: Request):
-    return _templates.TemplateResponse("learning_page.html", {"request": request, "active_page": "learning"})
+    return _protected_page(request, "learning_page.html", {"active_page": "learning"})
+
+
+@app.get("/whatson", response_class=HTMLResponse, include_in_schema=False)
+async def whatson_page(request: Request):
+    return _protected_page(request, "whatson_page.html", {"active_page": "whatson"})
+
+
+@app.get("/aitools", response_class=HTMLResponse, include_in_schema=False)
+async def aitools_page(request: Request):
+    return _protected_page(request, "aitools_page.html", {"active_page": "aitools"})
+
+
+@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+async def admin_page(request: Request):
+    user = get_optional_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    if not user.is_admin:
+        return RedirectResponse("/dashboard", status_code=302)
+    return _templates.TemplateResponse("admin_base.html", {"request": request, "active_page": "admin"})
+
+
+@app.get("/learning-template", response_class=HTMLResponse, include_in_schema=False)
+async def learning_template(request: Request):
+    return _protected_page(request, "add_learning_module.html")
+
 
 @app.get("/add-module", response_class=HTMLResponse, include_in_schema=False)
 async def add_module_page(request: Request, learning_id: str = ""):
+    user = get_optional_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    if not user.is_admin:
+        return RedirectResponse("/dashboard", status_code=302)
     if not learning_id:
         return RedirectResponse("/admin", status_code=302)
     db = SessionLocal()
@@ -162,22 +263,26 @@ async def add_module_page(request: Request, learning_id: str = ""):
     finally:
         db.close()
     return _templates.TemplateResponse("add_module.html", {
-        "request": request, "learning_id": learning_id,
-        "learning_title": learning_title, "active_page": "admin"
+        "request": request,
+        "learning_id": learning_id,
+        "learning_title": learning_title,
+        "active_page": "admin",
     })
+
 
 @app.get("/edit-module", response_class=HTMLResponse, include_in_schema=False)
 async def edit_module_page(request: Request, module_id: str = ""):
+    user = get_optional_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    if not user.is_admin:
+        return RedirectResponse("/dashboard", status_code=302)
     if not module_id:
         return RedirectResponse("/admin", status_code=302)
     return _templates.TemplateResponse("edit_module.html", {
-        "request": request, "module_id": module_id, "active_page": "admin"
-    })
-
-@app.get("/whatson", response_class=HTMLResponse, include_in_schema=False)
-async def whatson_page(request: Request):
-    return _templates.TemplateResponse("whatson_page.html", {
-        "request": request, "active_page": "whatson"
+        "request": request,
+        "module_id": module_id,
+        "active_page": "admin",
     })
 
 

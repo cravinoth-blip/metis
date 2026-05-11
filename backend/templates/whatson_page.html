@@ -38,9 +38,7 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('metis_token');
-    const user  = JSON.parse(localStorage.getItem('metis_user') || '{}');
-    if (!token) { location.href = '/login'; }
+    const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
 
     document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
     document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
@@ -49,14 +47,10 @@
     document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
     if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
 
-    document.getElementById('admin-logout-btn').addEventListener('click', () => {
-      localStorage.removeItem('metis_token');
+    document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem('metis_user');
       location.href = '/login';
-    });
-
-    document.body.addEventListener('htmx:configRequest', evt => {
-      evt.detail.headers['Authorization'] = `Bearer ${token}`;
     });
 
     document.body.addEventListener('htmx:responseError', () => {

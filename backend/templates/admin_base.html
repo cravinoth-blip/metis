@@ -92,10 +92,7 @@
   <div id="modal-container"></div>
 
   <script>
-    const token = localStorage.getItem('metis_token');
-    const user  = JSON.parse(localStorage.getItem('metis_user') || '{}');
-    if (!token)           { location.href = '/login'; }
-    else if (!user.is_admin) { location.href = '/'; }
+    const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
 
     document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
     document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
@@ -106,14 +103,10 @@
     // Always visible on the admin page — user is guaranteed to be an admin
     document.getElementById('admin-link').classList.remove('hidden');
 
-    document.getElementById('admin-logout-btn').addEventListener('click', () => {
-      localStorage.removeItem('metis_token');
+    document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem('metis_user');
       location.href = '/login';
-    });
-
-    document.body.addEventListener('htmx:configRequest', evt => {
-      evt.detail.headers['Authorization'] = `Bearer ${token}`;
     });
 
     document.getElementById('admin-tabs').addEventListener('click', e => {

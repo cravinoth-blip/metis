@@ -44,7 +44,6 @@
   const tbody = document.getElementById('mod-tbody');
   const saveBtn = document.getElementById('save-order-btn');
   const learningId = '{{ learning_id }}';
-  const token = localStorage.getItem('metis_token');
   let draggedRow = null;
 
   tbody.addEventListener('dragstart', e => {
@@ -72,7 +71,7 @@
     try {
       await fetch(`/api/courses/learnings/${learningId}/modules/reorder`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order: ids }),
       });
       saveBtn.textContent = 'Saved!';
