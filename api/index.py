@@ -2,13 +2,13 @@ import os
 import sys
 import traceback
 
-# Point at the backend directory — single source of truth
+# Add backend directory to path — single source of truth
 _backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'backend')
 sys.path.insert(0, _backend_dir)
 
 from fastapi import FastAPI
 
-# Define app unconditionally so Vercel always detects a valid ASGI target
+# Fallback app — Vercel always needs a valid ASGI target at import time
 app = FastAPI()
 
 _import_error: str | None = None
@@ -21,8 +21,8 @@ try:
     _import_step = "done"
 except Exception as _e:
     _import_error = traceback.format_exc()
-
-
-@app.get("/api/debug")
-def _debug():
-    return {"step": _import_step, "error": _import_error}
+    # Only register the debug route on the fallback app.
+    # When the main app loads successfully it already exposes /api/debug itself.
+    @app.get("/api/debug")
+    def _debug():
+        return {"step": _import_step, "error": _import_error}
