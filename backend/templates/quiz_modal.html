@@ -1,0 +1,61 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">{{ 'Edit' if quiz else 'New' }} Quiz</h3>
+
+    {% if quiz %}
+    <form hx-put="/api/admin/ui/quizzes/{{ quiz.id }}" hx-target="#skillgames-tab-content" hx-swap="outerHTML">
+    {% else %}
+    <form hx-post="/api/admin/ui/quizzes" hx-target="#skillgames-tab-content" hx-swap="outerHTML">
+    {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input name="title" required class="form-input" value="{{ quiz.title if quiz else '' }}">
+      </div>
+
+      {% if not quiz %}
+      <div class="form-group">
+        <label class="form-label">ID * <span style="font-size:.8em;color:var(--text-secondary)">(slug, e.g. ai-fundamentals)</span></label>
+        <input name="quiz_id" required class="form-input" placeholder="my-quiz-id">
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-input" rows="2">{{ quiz.description if quiz else '' }}</textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input name="category" class="form-input" placeholder="e.g. AI Knowledge" value="{{ quiz.category if quiz else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Difficulty</label>
+          <select name="difficulty" class="form-input">
+            {% for d in ['Beginner', 'Intermediate', 'Advanced'] %}
+            <option value="{{ d }}" {% if quiz and quiz.difficulty == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">XP Reward</label>
+          <input type="number" name="xp_reward" class="form-input" min="0" value="{{ quiz.xp_reward if quiz else 100 }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time Estimate</label>
+          <input name="time_estimate" class="form-input" placeholder="e.g. 10 min" value="{{ quiz.time_estimate if quiz else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Min Level</label>
+          <input type="number" name="min_level" class="form-input" min="1" value="{{ quiz.min_level if quiz else 1 }}">
+        </div>
+      </div>
+
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

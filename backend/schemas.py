@@ -62,8 +62,9 @@ class QuizQuestion(BaseModel):
     question: str
     options: List[str]
     correct_index: int
+    correct_indices: List[int] = []
     explanation: str
-    type: str = "multiple_choice"
+    type: str = "single_choice"
 
 
 class QuizInfo(BaseModel):
@@ -92,7 +93,7 @@ class QuizDetail(BaseModel):
 
 
 class QuizSubmit(BaseModel):
-    answers: List[int]
+    answers: List[Any]  # int for single_choice, List[int] for multiple_choice
 
 
 class QuizResult(BaseModel):

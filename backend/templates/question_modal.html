@@ -1,0 +1,99 @@
+<div class="modal-overlay">
+  <div class="modal" style="width:660px">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm"
+              hx-get="/api/admin/ui/quizzes/{{ quiz_id }}/questions"
+              hx-target="#modal-container"
+              hx-swap="innerHTML">&#8592; Back</button>
+      <h3 style="margin:0">{{ 'Edit' if question else 'New' }} Question</h3>
+      <span class="text-sm text-secondary">{{ quiz_title }}</span>
+    </div>
+
+    {% if question %}
+    <form hx-put="/api/admin/ui/questions/{{ question.id }}" hx-target="#modal-container" hx-swap="innerHTML">
+    {% else %}
+    <form hx-post="/api/admin/ui/quizzes/{{ quiz_id }}/questions" hx-target="#modal-container" hx-swap="innerHTML">
+    {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Question *</label>
+        <textarea name="question" required class="form-input" rows="3">{{ question.question if question else '' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select name="q_type" id="q-type" class="form-input" onchange="syncSelectorType()">
+          <option value="single_choice"  {% if not question or question.type == 'single_choice'  %}selected{% endif %}>Single Choice (one correct answer)</option>
+          <option value="multiple_choice" {% if question and question.type == 'multiple_choice' %}selected{% endif %}>Multiple Choice (multiple correct answers)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" id="options-label">Options — select the correct answer(s)</label>
+        <div style="display:flex;flex-direction:column;gap:8px" id="options-list">
+          {% set checked = checked_indices if checked_indices is defined else ([question.correct_index] if question else []) %}
+          {% for i in range(4) %}
+          {% set opt = options[i] if options is defined and options|length > i else '' %}
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="correct-sel"
+                   type="{{ 'checkbox' if question and question.type == 'multiple_choice' else 'radio' }}"
+                   name="correct_index" value="{{ i }}"
+                   {% if i in checked %}checked{% endif %}
+                   style="width:auto;flex-shrink:0;accent-color:var(--primary)">
+            <input name="option_{{ i }}" required class="form-input" style="flex:1"
+                   placeholder="Option {{ i + 1 }}" value="{{ opt }}">
+          </div>
+          {% endfor %}
+        </div>
+        <p class="text-sm text-secondary" style="margin-top:6px" id="selector-hint">
+          &#9679; = correct answer
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Explanation</label>
+        <textarea name="explanation" class="form-input" rows="3">{{ question.explanation if question else '' }}</textarea>
+      </div>
+
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  function syncSelectorType() {
+    const type = document.getElementById('q-type').value;
+    const isMulti = type === 'multiple_choice';
+    const selectors = document.querySelectorAll('.correct-sel');
+    const hint = document.getElementById('selector-hint');
+
+    selectors.forEach((el, i) => {
+      const wasChecked = el.checked;
+      el.type = isMulti ? 'checkbox' : 'radio';
+      // When switching to radio, only keep first checked
+      if (!isMulti) {
+        el.checked = (i === 0 && !document.querySelector('.correct-sel:checked')) ? true : wasChecked;
+      }
+    });
+
+    // Ensure at least one radio is checked when switching to single
+    if (!isMulti && !document.querySelector('.correct-sel:checked')) {
+      selectors[0].checked = true;
+    }
+
+    hint.textContent = isMulti
+      ? '☑ = correct answer(s) — select all that apply'
+      : '● = correct answer';
+  }
+
+  // Expose globally so the onchange attribute works even after HTMX swap
+  window.syncSelectorType = syncSelectorType;
+
+  // Run once on load to sync hint text to current type
+  syncSelectorType();
+})();
+</script>

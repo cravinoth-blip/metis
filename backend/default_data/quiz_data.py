@@ -1,4 +1,4 @@
-"""
+﻿"""
 Metis Quiz Data - All quiz definitions with gamified challenge types.
 """
 
@@ -24,7 +24,7 @@ QUIZZES = {
                 ],
                 "correct_index": 0,
                 "explanation": "LLM stands for Large Language Model - the architecture powering tools like ChatGPT, Claude, and Gemini.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-2",
@@ -37,7 +37,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "AI hallucination refers to the model generating plausible-sounding but false information with apparent confidence. This is a key risk in regulated industries.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-3",
@@ -50,7 +50,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "SUSTAIN-7 compared semaglutide to dulaglutide in T2D patients - it was not an obesity weight reduction trial. The AI has confidently cited the wrong trial. Always verify trial names and outcomes.",
-                "type": "spot_hallucination"
+                "type": "single_choice"
             },
             {
                 "id": "af-4",
@@ -63,7 +63,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Training data is the large dataset the model learns from during development. This shapes what the model knows and can do.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-5",
@@ -76,7 +76,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "The context window is the maximum amount of text (measured in tokens) that the model can consider at one time. Larger context windows allow longer documents to be processed.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-6",
@@ -89,7 +89,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Fine-tuning adapts a pre-trained model to a specific domain or task using a smaller, curated dataset - for example, fine-tuning on clinical notes.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-7",
@@ -102,7 +102,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Tokens are the basic units LLMs process - roughly 3-4 characters each. 1000 tokens ~ 750 words. Pricing and context limits are measured in tokens.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-8",
@@ -115,7 +115,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Tools like Elicit and Consensus are purpose-built for literature review tasks - they can screen, summarise and extract data from abstracts at scale with citation tracking.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "af-9",
@@ -128,7 +128,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "RAG connects an LLM to a document database - the AI retrieves relevant chunks before generating a response, grounding answers in actual source material and reducing hallucination.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "af-10",
@@ -141,7 +141,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Multimodal models can handle different data types - for example, GPT-4o can accept both text and images as inputs and generate text responses about them.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             }
         ]
     },
@@ -167,7 +167,7 @@ QUIZZES = {
                 ],
                 "correct_index": 2,
                 "explanation": "Effective prompts assign a role, specify format constraints, define the audience, specify length, and call out exactly what to focus on. Vague prompts produce vague outputs.",
-                "type": "best_prompt"
+                "type": "single_choice"
             },
             {
                 "id": "pe-2",
@@ -180,7 +180,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Few-shot prompting includes examples of the format/style you want. E.g., showing 2 examples of an adverse event narrative before asking the AI to write a new one dramatically improves consistency.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "pe-3",
@@ -193,7 +193,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Structured extraction prompts should specify the exact output format, field names, controlled vocabularies (like MedDRA), and how to handle missing data - this enables reliable downstream processing.",
-                "type": "best_prompt"
+                "type": "single_choice"
             },
             {
                 "id": "pe-4",
@@ -206,7 +206,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "System prompts (often set by enterprise admins) define the AI's role, tone, restrictions, and context persistently throughout a conversation - like briefing a new employee before they start work.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "pe-5",
@@ -219,7 +219,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Chain-of-thought prompting (e.g., 'Think step by step') encourages the model to work through a problem logically, which significantly improves accuracy on complex reasoning tasks.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "pe-6",
@@ -232,7 +232,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Quality review prompts should enumerate exactly what to look for, specify what to report, and define the output format. Vague review prompts miss specific issues.",
-                "type": "best_prompt"
+                "type": "single_choice"
             },
             {
                 "id": "pe-7",
@@ -245,7 +245,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Prompt injection is a security risk where malicious text (e.g., in pasted documents) contains hidden instructions to the AI. Always be cautious when feeding AI with external/untrusted content.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "pe-8",
@@ -258,7 +258,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "The best prompts explicitly include: Role, Context, Task, and Format (RCTF framework). This maximises the relevance and quality of the AI output.",
-                "type": "best_prompt"
+                "type": "single_choice"
             },
             {
                 "id": "pe-9",
@@ -271,7 +271,7 @@ QUIZZES = {
                 ],
                 "correct_index": 2,
                 "explanation": "Iterative prompt refinement is normal. If output misses something important, add explicit instruction to include it, then always verify AI outputs against source material for safety-critical content.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "pe-10",
@@ -284,7 +284,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Temperature (0-2) controls output randomness. Use low temperature (0.1-0.3) for factual extraction tasks needing consistency. Higher temperature for creative brainstorming.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "pe-11",
@@ -297,7 +297,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Translation prompts for regulated documents must specify: target language, terminology handling, structure preservation, and edge case behaviour (e.g., untranslatable terms).",
-                "type": "best_prompt"
+                "type": "single_choice"
             },
             {
                 "id": "pe-12",
@@ -310,7 +310,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Grounding means constraining the AI to draw only from provided sources. Prompts like 'Answer using only the attached document. Cite the section for each claim' dramatically reduce hallucination risk.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             }
         ]
     },
@@ -336,7 +336,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Inputting identifiable patient data into external AI tools (including Enterprise ChatGPT) without explicit data processing agreements and anonymisation is a GDPR violation. Always anonymise before AI processing.",
-                "type": "ethics_check"
+                "type": "single_choice"
             },
             {
                 "id": "ae-2",
@@ -349,7 +349,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Algorithmic bias occurs when AI systems reflect and amplify biases present in training data. In healthcare, this can lead to disparate treatment recommendations across demographic groups.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-3",
@@ -362,7 +362,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "AI can accelerate drafting but regulatory documents (adverse event narratives, CSRs, labels) require qualified human review and authorship accountability. AI as sole author of regulated content is not currently acceptable.",
-                "type": "ethics_check"
+                "type": "single_choice"
             },
             {
                 "id": "ae-4",
@@ -375,7 +375,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Explainability (or interpretability) is a core AI ethics principle - especially critical in healthcare where clinicians and regulators must understand why an AI made a recommendation.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-5",
@@ -388,7 +388,7 @@ QUIZZES = {
                 ],
                 "correct_index": 2,
                 "explanation": "Most AI writing tools fall under limited/minimal risk under the EU AI Act. However, AI used in medical device decision-making or clinical diagnosis may be classified as high-risk.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-6",
@@ -401,7 +401,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Most major journals (ICMJE, Lancet, BMJ, NEJM) now require disclosure of AI use in manuscript preparation. AI cannot be listed as an author. Human authors remain fully accountable for all content.",
-                "type": "ethics_check"
+                "type": "single_choice"
             },
             {
                 "id": "ae-7",
@@ -414,7 +414,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Data minimisation is a GDPR principle - you should only share with AI tools the minimum data necessary for the task. Strip unnecessary personal identifiers before AI processing.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-8",
@@ -427,7 +427,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "In regulated industries, factual errors about safety data are never acceptable shortcuts. AI-generated errors must be caught and corrected before submission. This is why human oversight of AI outputs is mandatory.",
-                "type": "ethics_check"
+                "type": "single_choice"
             },
             {
                 "id": "ae-9",
@@ -440,7 +440,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Responsible AI combines multiple principles: accuracy (reduces hallucination risk), fairness (avoids bias), transparency (discloses AI use), safety (protects patient data), and oversight (human review).",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-10",
@@ -453,7 +453,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Client confidentiality agreements often explicitly prohibit processing their data through third-party AI tools, regardless of enterprise tier. Always check both the company AI policy and the specific client NDA/contract.",
-                "type": "ethics_check"
+                "type": "single_choice"
             },
             {
                 "id": "ae-11",
@@ -466,7 +466,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Model drift occurs when real-world data diverges from training data - an AI trained on 2022 clinical guidelines may give outdated recommendations in 2025. Continuous monitoring and revalidation is critical in healthcare.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "ae-12",
@@ -479,7 +479,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Data governance breaches involving patient data must be escalated to the Data Protection Officer (DPO) immediately. Use of the tool should be suspended pending a formal investigation under GDPR Article 33.",
-                "type": "scenario"
+                "type": "single_choice"
             }
         ]
     },
@@ -505,7 +505,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Structured data has a fixed schema - rows and columns with defined types (numbers, dates, text). Clinical databases, SDTM datasets, and CRF data are typically structured. AI handles this differently from unstructured text.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-2",
@@ -518,7 +518,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "MAR means the probability of missingness depends on other observed data (e.g., sicker patients more likely to drop out and have missing labs). This matters for imputation strategies in AI/ML models.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-3",
@@ -531,7 +531,7 @@ QUIZZES = {
                 ],
                 "correct_index": 2,
                 "explanation": "Overfitting occurs when a model learns noise/specifics of training data rather than true patterns. It performs brilliantly on training data but poorly on new data - a critical problem in healthcare AI validation.",
-                "type": "spot_hallucination"
+                "type": "single_choice"
             },
             {
                 "id": "dl-4",
@@ -544,7 +544,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Normalisation scales features to comparable ranges. Without it, a variable like 'age (18-90)' would numerically dominate a variable like 'binary sex (0-1)', leading to biased model training.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-5",
@@ -557,7 +557,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "GIGO is a fundamental principle: no matter how sophisticated the AI algorithm, poor quality input data produces unreliable outputs. Data quality is the foundation of trustworthy AI.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-6",
@@ -570,7 +570,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "A critical data literacy concept: AI models find correlations in data, but correlation does not imply causation. E.g., ice cream sales correlate with drowning rates (both increase in summer) - ice cream does not cause drowning.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-7",
@@ -583,7 +583,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Structured data cleaning is best done with tools like Excel, Python (pandas), or R before feeding to AI. ChatGPT can assist with the code but isn't a data cleaning tool itself.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "dl-8",
@@ -596,7 +596,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Confidence intervals quantify uncertainty. A 95% CI of [1.2-8.7] for an odds ratio is much wider (less precise) than [3.1-3.8]. Understanding uncertainty is essential for interpreting AI-generated statistical claims.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "dl-9",
@@ -609,7 +609,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Statistical significance does not equal clinical meaningfulness. HR=0.98 means 2% mortality reduction. A CI touching 1.0 means the true effect could be zero. Always assess effect size and clinical relevance, not just p-values.",
-                "type": "spot_hallucination"
+                "type": "single_choice"
             },
             {
                 "id": "dl-10",
@@ -622,7 +622,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Synthetic data is algorithmically generated to match real data distributions without containing real patient records. It enables AI development and testing while protecting patient privacy.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             }
         ]
     },
@@ -648,7 +648,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Elicit and Rayyan are purpose-built for systematic literature review - they support PICO framework, abstract screening workflows, and data extraction tables at scale.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "atp-2",
@@ -661,7 +661,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Perplexity specialises in web search with source citations - ideal for checking current guidelines, recent publications, or news. ChatGPT has a training cutoff and is better for drafting/reasoning tasks.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-3",
@@ -674,7 +674,7 @@ QUIZZES = {
                 ],
                 "correct_index": 2,
                 "explanation": "BioRender provides publication-ready, pre-licensed biological illustrations. Unlike general image AI tools, BioRender outputs meet journal figure requirements and include usage licences.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "atp-4",
@@ -687,7 +687,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Grammarly integrates directly into Word, Outlook, browsers - providing real-time suggestions. ChatGPT requires intentional prompting. Different tools for different workflow stages.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-5",
@@ -700,7 +700,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Otter.ai / Teams AI Meeting Notes handle transcription, then an LLM can efficiently extract and structure action items from the transcript text. Combining specialist tools gives the best result.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "atp-6",
@@ -713,7 +713,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Consensus searches millions of peer-reviewed papers and provides a 'consensus meter' indicating whether scientific literature supports a claim - useful for rapid evidence queries in medical writing.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-7",
@@ -726,7 +726,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "DALL-E generates aesthetically plausible but not chemically accurate structures. Regulatory submissions require precisely drawn structures from validated tools like ChemDraw or MarvinSketch.",
-                "type": "spot_hallucination"
+                "type": "single_choice"
             },
             {
                 "id": "atp-8",
@@ -739,7 +739,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Claude offers very large context windows (200K tokens = ~150,000 words) making it well-suited for processing long regulatory documents, CSRs, or full clinical study reports in a single session.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-9",
@@ -752,7 +752,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Gamma.app, Beautiful.ai, and Microsoft Copilot for PowerPoint can generate structured presentation decks from outlines. They handle layout, design, and slide structure automatically.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "atp-10",
@@ -765,7 +765,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "M365 Copilot is deeply integrated with your work context - it can summarise your emails, draft documents based on your existing files, and search your SharePoint. ChatGPT is isolated from your organisational data.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-11",
@@ -778,7 +778,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Healthcare imagery has specific requirements: commercial licence (Midjourney Pro required for commercial use), medical accuracy review, brand compliance, and ideally patient community involvement for disease awareness content.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "atp-12",
@@ -791,7 +791,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "NotebookLM lets you upload documents and then chat with an AI that answers only from those specific sources with citations. Useful for: literature reviews, CSR analysis, policy document Q&A.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-13",
@@ -804,7 +804,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "PubMed and Google Scholar both offer automated alert systems for new publications matching search criteria. This is more reliable and timely than manually prompting an LLM which has a training cutoff.",
-                "type": "which_tool"
+                "type": "single_choice"
             },
             {
                 "id": "atp-14",
@@ -817,7 +817,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Elicit's AI can automatically extract PICO elements, sample sizes, outcomes, and key findings from multiple papers simultaneously, dramatically accelerating evidence synthesis for SLRs and HTAs.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "atp-15",
@@ -830,7 +830,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Data incidents involving confidential information must follow formal incident response procedures. IT/InfoSec must be notified to investigate scope, assess risk, and determine if external notification obligations apply.",
-                "type": "scenario"
+                "type": "single_choice"
             }
         ]
     },
@@ -856,7 +856,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "An AI pipeline chains tools/steps together: e.g., PDF ingestion → OCR → chunking → embedding → vector search → LLM generation → quality check. Each stage transforms data for the next.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-2",
@@ -869,7 +869,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Complex data tasks benefit from layered architectures: deterministic rules catch obvious errors, statistical models find anomalies, LLMs provide interpretable explanations, and humans review high-risk flags.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-3",
@@ -882,7 +882,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "AI agents can plan sequences of actions, use external tools, and autonomously execute multi-step tasks. E.g., an agent could: search PubMed → download papers → extract data → draft a summary - all from one instruction.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-4",
@@ -895,7 +895,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Orchestration manages the flow between multiple agents - e.g., a router decides whether a query goes to a literature search agent, a summarisation agent, or a regulatory compliance agent.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-5",
@@ -908,7 +908,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Documents are split into chunks (typically 500-1500 characters) with some overlap. Each chunk is embedded as a vector. When a query arrives, the most relevant chunks are retrieved and passed to the LLM as context.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-6",
@@ -921,7 +921,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "For deterministic tasks (extraction, classification, structured output), set temperature to 0 or very low. High temperature introduces randomness by design - useful for creative tasks, harmful for consistent data processing.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-7",
@@ -934,7 +934,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Vector search converts text to numerical embeddings. Query 'drug safety findings' might retrieve a paragraph about 'adverse event profile' even without keyword overlap, because they're semantically close in vector space.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-8",
@@ -947,7 +947,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "RAG is often preferred for document-heavy enterprise use cases because the knowledge base can be updated without expensive model retraining. Fine-tuning is better for style/format adaptation.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-9",
@@ -960,7 +960,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Robust AI classification includes: LLM with examples (high accuracy), confidence scores (know when uncertain), and human-in-the-loop for low confidence cases. Never route medical queries to wrong teams automatically.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-10",
@@ -973,7 +973,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "AI eval (evaluation) is a continuous QA process: build test cases representing real scenarios, measure outputs against expected results, track metrics over time. Essential before deploying AI in regulated workflows.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-11",
@@ -986,7 +986,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "HITL is mandatory when AI outputs feed into regulated processes (submissions, labels, publications), affect patient safety, or have legal/contractual implications. AI accelerates; humans validate and are accountable.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-12",
@@ -999,7 +999,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "RAG retrieval quality depends heavily on chunk size, overlap, and metadata. Poor chunking breaks coherent ideas across boundaries. Adding metadata filters (document type, section) improves precision dramatically.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-13",
@@ -1012,7 +1012,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Prompt caching (available in Claude and GPT-4o) stores the KV cache of repeated context. If you always start with the same 100K-token document, caching means you only pay to process it once.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-14",
@@ -1025,7 +1025,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Citation hallucination is a known LLM failure mode. RAG grounds responses in real documents, DOI verification catches fabricated references, and human validation catches remaining errors. Multiple safety layers are needed.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-15",
@@ -1038,7 +1038,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Latency (response time) is key for user experience. Complex RAG pipelines add latency at each step. For async batch processing, high latency is acceptable; for real-time document Q&A, fast responses matter.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-16",
@@ -1051,7 +1051,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "Guardrails are programmatic checks on AI inputs/outputs: content filters (no PII output), confidence thresholds (don't show low-confidence answers), format validators (output must parse as JSON), topic restrictions.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             },
             {
                 "id": "baw-17",
@@ -1064,7 +1064,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "This is model drift from provider updates. Having an eval test suite means you can objectively measure the impact. Model versioning allows you to pin to a specific model version to maintain consistency.",
-                "type": "scenario"
+                "type": "single_choice"
             },
             {
                 "id": "baw-18",
@@ -1077,7 +1077,7 @@ QUIZZES = {
                 ],
                 "correct_index": 1,
                 "explanation": "No single AI safety control is perfect. Defence in depth stacks multiple controls: sanitise inputs, filter outputs, require human sign-off, log all interactions, and monitor for anomalies - creating overlapping safety nets.",
-                "type": "multiple_choice"
+                "type": "single_choice"
             }
         ]
     }

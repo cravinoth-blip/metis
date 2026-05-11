@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime
 import json
@@ -10,10 +10,13 @@ from database import get_db
 import models
 import schemas
 from auth import get_current_user, calculate_level
-from default_data.quiz_data import QUIZZES
 
 router = APIRouter(tags=["quiz"])
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+
+
+def _active_questions(quiz: models.Quiz) -> list[models.Question]:
+    return sorted([q for q in quiz.questions if q.is_active], key=lambda q: q.order)
 
 
 @router.get("/ui/skillgames", response_class=HTMLResponse)
@@ -22,25 +25,31 @@ def skillgames_ui(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    quizzes_db = (
+        db.query(models.Quiz)
+        .options(joinedload(models.Quiz.questions))
+        .filter(models.Quiz.is_active == True)
+        .all()
+    )
     quizzes = []
-    for quiz_id, quiz in QUIZZES.items():
+    for quiz in quizzes_db:
         best = db.query(func.max(models.QuizAttempt.score_pct)).filter(
             models.QuizAttempt.user_id == current_user.id,
-            models.QuizAttempt.quiz_id == quiz_id,
+            models.QuizAttempt.quiz_id == quiz.id,
         ).scalar()
         attempts = db.query(models.QuizAttempt).filter(
             models.QuizAttempt.user_id == current_user.id,
-            models.QuizAttempt.quiz_id == quiz_id,
+            models.QuizAttempt.quiz_id == quiz.id,
         ).count()
         quizzes.append({
-            "id":             quiz["id"],
-            "title":          quiz["title"],
-            "description":    quiz.get("description", ""),
-            "category":       quiz.get("category", ""),
-            "difficulty":     quiz.get("difficulty", "beginner"),
-            "min_level":      quiz.get("min_level", 1),
-            "question_count": len(quiz["questions"]),
-            "xp_reward":      quiz.get("xp_reward", 0),
+            "id":             quiz.id,
+            "title":          quiz.title,
+            "description":    quiz.description or "",
+            "category":       quiz.category or "",
+            "difficulty":     quiz.difficulty or "Beginner",
+            "min_level":      quiz.min_level or 1,
+            "question_count": len(_active_questions(quiz)),
+            "xp_reward":      quiz.xp_reward,
             "best_score":     round(best) if best is not None else None,
             "attempts":       attempts,
         })
@@ -56,76 +65,83 @@ def skillgames_ui(
 @router.get("/", response_model=list[schemas.QuizInfo])
 def list_quizzes(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    quizzes_db = (
+        db.query(models.Quiz)
+        .options(joinedload(models.Quiz.questions))
+        .filter(models.Quiz.is_active == True)
+        .all()
+    )
     result = []
-    for quiz_id, quiz in QUIZZES.items():
-        # Get user's best score for this quiz
+    for quiz in quizzes_db:
         best = db.query(func.max(models.QuizAttempt.score_pct)).filter(
             models.QuizAttempt.user_id == current_user.id,
-            models.QuizAttempt.quiz_id == quiz_id
+            models.QuizAttempt.quiz_id == quiz.id,
         ).scalar()
-
         attempts = db.query(models.QuizAttempt).filter(
             models.QuizAttempt.user_id == current_user.id,
-            models.QuizAttempt.quiz_id == quiz_id
+            models.QuizAttempt.quiz_id == quiz.id,
         ).count()
-
         result.append(schemas.QuizInfo(
-            id=quiz["id"],
-            title=quiz["title"],
-            description=quiz["description"],
-            category=quiz["category"],
-            difficulty=quiz["difficulty"],
-            xp_reward=quiz["xp_reward"],
-            question_count=len(quiz["questions"]),
-            time_estimate=quiz["time_estimate"],
-            min_level=quiz.get("min_level", 1),
+            id=quiz.id,
+            title=quiz.title,
+            description=quiz.description or "",
+            category=quiz.category or "",
+            difficulty=quiz.difficulty or "Beginner",
+            xp_reward=quiz.xp_reward,
+            question_count=len(_active_questions(quiz)),
+            time_estimate=quiz.time_estimate or "",
+            min_level=quiz.min_level or 1,
             best_score=best,
-            attempts=attempts
+            attempts=attempts,
         ))
-
     return result
 
 
 @router.get("/{quiz_id}", response_model=schemas.QuizDetail)
 def get_quiz(
     quiz_id: str,
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    quiz = QUIZZES.get(quiz_id)
+    quiz = (
+        db.query(models.Quiz)
+        .options(joinedload(models.Quiz.questions))
+        .filter(models.Quiz.id == quiz_id, models.Quiz.is_active == True)
+        .first()
+    )
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
-
-    # Check level requirement
-    min_level = quiz.get("min_level", 1)
-    if current_user.level < min_level:
+    if current_user.level < (quiz.min_level or 1):
         raise HTTPException(
             status_code=403,
-            detail=f"This quiz requires level {min_level}. You are level {current_user.level}."
+            detail=f"This quiz requires level {quiz.min_level}. You are level {current_user.level}.",
         )
-
-    questions = [
-        schemas.QuizQuestion(
-            id=q["id"],
-            question=q["question"],
-            options=q["options"],
-            correct_index=q["correct_index"],
-            explanation=q["explanation"],
-            type=q.get("type", "multiple_choice")
-        )
-        for q in quiz["questions"]
-    ]
-
+    questions = []
+    for q in _active_questions(quiz):
+        try:
+            ci = json.loads(q.correct_indices) if q.correct_indices else [q.correct_index]
+        except Exception:
+            ci = [q.correct_index]
+        questions.append(schemas.QuizQuestion(
+            id=q.id,
+            question=q.question,
+            options=json.loads(q.options),
+            correct_index=q.correct_index,
+            correct_indices=ci,
+            explanation=q.explanation or "",
+            type=q.type or "single_choice",
+        ))
     return schemas.QuizDetail(
-        id=quiz["id"],
-        title=quiz["title"],
-        description=quiz["description"],
-        category=quiz["category"],
-        difficulty=quiz["difficulty"],
-        xp_reward=quiz["xp_reward"],
+        id=quiz.id,
+        title=quiz.title,
+        description=quiz.description or "",
+        category=quiz.category or "",
+        difficulty=quiz.difficulty or "Beginner",
+        xp_reward=quiz.xp_reward,
         questions=questions,
-        min_level=min_level
+        min_level=quiz.min_level or 1,
     )
 
 
@@ -134,59 +150,57 @@ def submit_quiz(
     quiz_id: str,
     submission: schemas.QuizSubmit,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # get_current_user uses its own session which is closed before returning,
-    # leaving current_user detached. Merge re-attaches it to this route's session
-    # so XP/level changes are tracked and committed.
     current_user = db.merge(current_user)
-
-    quiz = QUIZZES.get(quiz_id)
+    quiz = (
+        db.query(models.Quiz)
+        .options(joinedload(models.Quiz.questions))
+        .filter(models.Quiz.id == quiz_id, models.Quiz.is_active == True)
+        .first()
+    )
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    questions = quiz["questions"]
+    questions = _active_questions(quiz)
     if len(submission.answers) != len(questions):
         raise HTTPException(
             status_code=400,
-            detail=f"Expected {len(questions)} answers, got {len(submission.answers)}"
+            detail=f"Expected {len(questions)} answers, got {len(submission.answers)}",
         )
 
-    # Calculate score
+    def _is_correct(q: models.Question, answer) -> bool:
+        if q.type == "multiple_choice" and q.correct_indices:
+            try:
+                correct = set(json.loads(q.correct_indices))
+                given = set(answer) if isinstance(answer, list) else {answer}
+                return given == correct
+            except Exception:
+                pass
+        return answer == q.correct_index
+
     correct_count = sum(
         1 for i, answer in enumerate(submission.answers)
-        if answer == questions[i]["correct_index"]
+        if _is_correct(questions[i], answer)
     )
     score_pct = (correct_count / len(questions)) * 100
     passed = score_pct >= 70
-
-    # Calculate XP
-    base_xp = quiz["xp_reward"]
-    if passed:
-        xp_earned = base_xp
-    else:
-        xp_earned = int(base_xp * 0.2)
-
-    # Bonus for perfect score
+    base_xp = quiz.xp_reward
+    xp_earned = base_xp if passed else int(base_xp * 0.2)
     if score_pct == 100:
-        xp_earned = int(base_xp * 1.2)  # 20% bonus
+        xp_earned = int(base_xp * 1.2)
 
-    # Record attempt
-    attempt = models.QuizAttempt(
+    db.add(models.QuizAttempt(
         user_id=current_user.id,
         quiz_id=quiz_id,
         score_pct=round(score_pct, 1),
         xp_earned=xp_earned,
         answers=json.dumps(submission.answers),
-        completed_at=datetime.utcnow()
-    )
-    db.add(attempt)
-
-    # Update user XP and level
+        completed_at=datetime.utcnow(),
+    ))
     current_user.xp += xp_earned
     level, _ = calculate_level(current_user.xp)
     current_user.level = level
-
     db.commit()
 
     if score_pct == 100:
@@ -206,7 +220,7 @@ def submit_quiz(
         passed=passed,
         message=message,
         new_xp=current_user.xp,
-        new_level=current_user.level
+        new_level=current_user.level,
     )
 
 
@@ -214,11 +228,14 @@ def submit_quiz(
 def get_attempts(
     quiz_id: str,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    attempts = db.query(models.QuizAttempt).filter(
-        models.QuizAttempt.user_id == current_user.id,
-        models.QuizAttempt.quiz_id == quiz_id
-    ).order_by(models.QuizAttempt.completed_at.desc()).all()
-
-    return attempts
+    return (
+        db.query(models.QuizAttempt)
+        .filter(
+            models.QuizAttempt.user_id == current_user.id,
+            models.QuizAttempt.quiz_id == quiz_id,
+        )
+        .order_by(models.QuizAttempt.completed_at.desc())
+        .all()
+    )

@@ -12,6 +12,7 @@ from database_seeders.event_seeder import seed_all_events
 from database_seeders.learnings_seeder import seed_learnings
 from database_seeders.aitools_seeder import seed_ai_tools
 from database_seeders.badges_seeder import seed_badges
+from database_seeders.quiz_seeder import seed_quizzes
 
 async def seed_database():
     """Run all seeding functions sequentially."""
@@ -31,6 +32,9 @@ async def seed_database():
 
     # 5. Seed Badges (Synchronous)
     seed_badges()
+
+    # 6. Seed Quizzes (Synchronous)
+    seed_quizzes()
 
     logger.info("Database seeding completed successfully.")
 

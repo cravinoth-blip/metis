@@ -1,0 +1,49 @@
+<div class="modal-overlay">
+  <div class="modal" style="width:700px">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:4px">{{ quiz.title }} — Questions</h3>
+    <p class="text-sm text-secondary" style="margin-bottom:16px">{{ questions|length }} question{{ 's' if questions|length != 1 else '' }}</p>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <table class="table">
+        <thead>
+          <tr><th style="width:36px">#</th><th>Question</th><th>Type</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for q in questions %}
+          <tr id="question-row-{{ q.id }}">
+            <td style="color:var(--text-secondary);text-align:center">{{ loop.index }}</td>
+            <td style="font-size:.9em">{{ q.question[:90] }}{% if q.question|length > 90 %}&#8230;{% endif %}</td>
+            <td>
+              <span style="font-size:.75em;background:#e0e7ff;color:var(--accent);padding:2px 6px;border-radius:4px">
+                {{ q.type.replace('_', ' ') }}
+              </span>
+            </td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-secondary btn-sm"
+                      hx-get="/api/admin/ui/questions/{{ q.id }}/form"
+                      hx-target="#modal-container"
+                      hx-swap="innerHTML"
+                      style="margin-right:4px">Edit</button>
+              <button class="btn btn-danger btn-sm"
+                      hx-delete="/api/admin/ui/questions/{{ q.id }}"
+                      hx-confirm="Delete this question?"
+                      hx-target="#question-row-{{ q.id }}"
+                      hx-swap="outerHTML">Delete</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:24px">No questions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm"
+              hx-get="/api/admin/ui/quizzes/{{ quiz.id }}/questions/form"
+              hx-target="#modal-container"
+              hx-swap="innerHTML">+ Add Question</button>
+    </div>
+  </div>
+</div>

@@ -1,10 +1,10 @@
-{% macro diff_class(d) %}{% if d == 'intermediate' %}diff-intermediate{% elif d == 'advanced' %}diff-advanced{% else %}diff-beginner{% endif %}{% endmacro %}
+{% macro diff_class(d) %}{% set dl = d.lower() %}{% if dl == 'intermediate' %}diff-intermediate{% elif dl == 'advanced' %}diff-advanced{% else %}diff-beginner{% endif %}{% endmacro %}
 
 <div id="skillgames-container" style="padding:24px">
 
   <div class="filter-pills" id="cat-pills">
     {% for cat in categories %}
-    <span class="pill {% if loop.first %}active{% endif %}" data-cat="{{ cat }}">{{ cat }}</span>
+    <span class="pill {% if loop.first %}active pill-active{% endif %}" data-cat="{{ cat }}">{{ cat }}</span>
     {% endfor %}
   </div>
 

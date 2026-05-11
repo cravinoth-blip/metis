@@ -172,6 +172,39 @@ class AITool(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class Quiz(Base):
+    __tablename__ = "quizzes"
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String, nullable=True)
+    difficulty = Column(String, default="Beginner")
+    xp_reward = Column(Integer, default=100)
+    time_estimate = Column(String, nullable=True)
+    min_level = Column(Integer, default=1)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    questions = relationship("Question", back_populates="quiz", order_by="Question.order")
+
+
+class Question(Base):
+    __tablename__ = "questions"
+    id = Column(String, primary_key=True, index=True)
+    quiz_id = Column(String, ForeignKey("quizzes.id"), nullable=False)
+    question = Column(Text, nullable=False)
+    options = Column(Text, nullable=False)   # JSON array of 4 strings
+    correct_index = Column(Integer, nullable=False)      # primary correct answer (single_choice or first of multiple)
+    correct_indices = Column(Text, nullable=True)         # JSON array, used for multiple_choice
+    explanation = Column(Text, nullable=True)
+    type = Column(String, default="single_choice")
+    order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+
+    quiz = relationship("Quiz", back_populates="questions")
+
+
 class Badge(Base):
     __tablename__ = "badges"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

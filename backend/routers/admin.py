@@ -1354,6 +1354,283 @@ async def html_update_badge(
     return response
 
 
+# ── Skill Games (Quizzes) HTMX ────────────────────────────────────────────────
+
+def _quiz_list(db, q: str = ""):
+    query = db.query(models.Quiz).filter(models.Quiz.is_active == True)
+    if q:
+        t = f"%{q.lower()}%"
+        query = query.filter(
+            func.lower(models.Quiz.title).like(t) |
+            func.lower(models.Quiz.category).like(t)
+        )
+    quizzes = query.order_by(models.Quiz.title).all()
+    for quiz in quizzes:
+        quiz.question_count = sum(1 for qu in quiz.questions if qu.is_active)
+        quiz.attempt_count = db.query(models.QuizAttempt).filter(
+            models.QuizAttempt.quiz_id == quiz.id
+        ).count()
+    return quizzes
+
+
+def _questions_for(quiz_id: str, db) -> list:
+    return (
+        db.query(models.Question)
+        .filter(models.Question.quiz_id == quiz_id, models.Question.is_active == True)
+        .order_by(models.Question.order)
+        .all()
+    )
+
+
+@router.get("/ui/tabs/skillgames", response_class=HTMLResponse)
+async def html_tab_skillgames(
+    request: Request,
+    q: str = "",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return templates.TemplateResponse("admin_skillgames.html", {
+        "request": request, "quizzes": _quiz_list(db, q), "q": q,
+    })
+
+
+@router.get("/ui/quizzes/form", response_class=HTMLResponse)
+async def html_quiz_form(
+    request: Request,
+    quiz_id: Optional[str] = None,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first() if quiz_id else None
+    return templates.TemplateResponse("quiz_modal.html", {"request": request, "quiz": quiz})
+
+
+@router.post("/ui/quizzes", response_class=HTMLResponse)
+async def html_create_quiz(
+    request: Request,
+    title: str = Form(...),
+    quiz_id: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    difficulty: str = Form("Beginner"),
+    xp_reward: int = Form(100),
+    time_estimate: Optional[str] = Form(None),
+    min_level: int = Form(1),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    db.add(models.Quiz(
+        id=quiz_id, title=title, description=description or None,
+        category=category or None, difficulty=difficulty,
+        xp_reward=xp_reward, time_estimate=time_estimate or None,
+        min_level=min_level, is_active=True,
+    ))
+    db.commit()
+    response = templates.TemplateResponse("admin_skillgames.html", {
+        "request": request, "quizzes": _quiz_list(db), "q": "",
+    })
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Quiz created!"}'
+    return response
+
+
+@router.put("/ui/quizzes/{quiz_id}", response_class=HTMLResponse)
+async def html_update_quiz(
+    request: Request,
+    quiz_id: str,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    difficulty: str = Form("Beginner"),
+    xp_reward: int = Form(100),
+    time_estimate: Optional[str] = Form(None),
+    min_level: int = Form(1),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    quiz.title = title
+    quiz.description = description or None
+    quiz.category = category or None
+    quiz.difficulty = difficulty
+    quiz.xp_reward = xp_reward
+    quiz.time_estimate = time_estimate or None
+    quiz.min_level = min_level
+    quiz.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    response = templates.TemplateResponse("admin_skillgames.html", {
+        "request": request, "quizzes": _quiz_list(db), "q": "",
+    })
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Quiz updated!"}'
+    return response
+
+
+@router.delete("/ui/quizzes/{quiz_id}", response_class=HTMLResponse)
+async def html_delete_quiz(
+    quiz_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first()
+    if quiz:
+        quiz.is_active = False
+        quiz.updated_at = datetime.now(timezone.utc)
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Quiz deleted"}'
+    return response
+
+
+@router.get("/ui/quizzes/{quiz_id}/questions", response_class=HTMLResponse)
+async def html_quiz_questions(
+    request: Request,
+    quiz_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return templates.TemplateResponse("quiz_questions_modal.html", {
+        "request": request,
+        "quiz": quiz,
+        "questions": _questions_for(quiz_id, db),
+    })
+
+
+@router.get("/ui/quizzes/{quiz_id}/questions/form", response_class=HTMLResponse)
+async def html_new_question_form(
+    request: Request,
+    quiz_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first()
+    return templates.TemplateResponse("question_modal.html", {
+        "request": request, "question": None, "quiz_id": quiz_id,
+        "quiz_title": quiz.title if quiz else quiz_id,
+    })
+
+
+@router.post("/ui/quizzes/{quiz_id}/questions", response_class=HTMLResponse)
+async def html_create_question(
+    request: Request,
+    quiz_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    fd = await request.form()
+    question_text = fd.get("question", "").strip()
+    q_type = fd.get("q_type", "single_choice")
+    opts = [fd.get(f"option_{i}", "") for i in range(4)]
+    correct_raw = fd.getlist("correct_index")
+    correct_indices = sorted({int(x) for x in correct_raw if str(x).isdigit()})
+    correct_index = correct_indices[0] if correct_indices else 0
+    explanation = fd.get("explanation") or None
+
+    existing_count = db.query(models.Question).filter(
+        models.Question.quiz_id == quiz_id, models.Question.is_active == True,
+    ).count()
+    db.add(models.Question(
+        id=f"{quiz_id}-q{existing_count + 1}",
+        quiz_id=quiz_id,
+        question=question_text,
+        options=json.dumps(opts),
+        correct_index=correct_index,
+        correct_indices=json.dumps(correct_indices),
+        explanation=explanation,
+        type=q_type,
+        order=existing_count,
+        is_active=True,
+    ))
+    db.commit()
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == quiz_id).first()
+    response = templates.TemplateResponse("quiz_questions_modal.html", {
+        "request": request,
+        "quiz": quiz,
+        "questions": _questions_for(quiz_id, db),
+    })
+    response.headers["HX-Trigger"] = '{"showToast": "Question added!"}'
+    return response
+
+
+@router.get("/ui/questions/{question_id}/form", response_class=HTMLResponse)
+async def html_edit_question_form(
+    request: Request,
+    question_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == q.quiz_id).first()
+    try:
+        checked = json.loads(q.correct_indices) if q.correct_indices else [q.correct_index]
+    except Exception:
+        checked = [q.correct_index]
+    return templates.TemplateResponse("question_modal.html", {
+        "request": request,
+        "question": q,
+        "options": json.loads(q.options),
+        "checked_indices": checked,
+        "quiz_id": q.quiz_id,
+        "quiz_title": quiz.title if quiz else q.quiz_id,
+    })
+
+
+@router.put("/ui/questions/{question_id}", response_class=HTMLResponse)
+async def html_update_question(
+    request: Request,
+    question_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    fd = await request.form()
+    question_text = fd.get("question", "").strip()
+    q_type = fd.get("q_type", "single_choice")
+    opts = [fd.get(f"option_{i}", "") for i in range(4)]
+    correct_raw = fd.getlist("correct_index")
+    correct_indices = sorted({int(x) for x in correct_raw if str(x).isdigit()})
+    correct_index = correct_indices[0] if correct_indices else 0
+    explanation = fd.get("explanation") or None
+
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+    q.question = question_text
+    q.options = json.dumps(opts)
+    q.correct_index = correct_index
+    q.correct_indices = json.dumps(correct_indices)
+    q.explanation = explanation
+    q.type = q_type
+    db.commit()
+    quiz = db.query(models.Quiz).filter(models.Quiz.id == q.quiz_id).first()
+    response = templates.TemplateResponse("quiz_questions_modal.html", {
+        "request": request,
+        "quiz": quiz,
+        "questions": _questions_for(q.quiz_id, db),
+    })
+    response.headers["HX-Trigger"] = '{"showToast": "Question updated!"}'
+    return response
+
+
+@router.delete("/ui/questions/{question_id}", response_class=HTMLResponse)
+async def html_delete_question(
+    question_id: str,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if q:
+        q.is_active = False
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Question deleted"}'
+    return response
+
+
 @router.delete("/ui/badges/{badge_id}", response_class=HTMLResponse)
 async def html_delete_badge(
     badge_id: int,

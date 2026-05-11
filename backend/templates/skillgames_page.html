@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,29 +7,60 @@
   <link rel="stylesheet" href="/static/css/styles.css">
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <style>
-    #modal-container .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    /* ── Quiz overlay ───────────────────────────────────────────────────── */
+    #quiz-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center; justify-content: center;
+      z-index: 1000;
     }
-    #modal-container .modal {
-      background: #fff; border-radius: 12px; padding: 24px;
-      width: 540px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    #quiz-overlay.open { display: flex; }
+    #quiz-modal {
+      background: #fff; border-radius: 14px; padding: 28px;
+      width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
       position: relative;
     }
-    .modal-close {
-      position: absolute; top: 12px; right: 12px;
-      background: none; border: none; font-size: 1.1rem; cursor: pointer;
-      color: var(--text-secondary, #6b7280);
+
+    /* ── Options ────────────────────────────────────────────────────────── */
+    .q-option {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 16px; border-radius: 10px;
+      border: 2px solid var(--border, #e5e7eb);
+      cursor: pointer; transition: border-color .15s, background .15s;
+      user-select: none;
     }
+    .q-option:hover:not(.q-revealed) { border-color: var(--primary, #6366f1); background: #f5f3ff; }
+    .q-option.q-selected  { border-color: var(--primary, #6366f1); background: #e0e7ff; }
+    .q-option.q-correct   { border-color: #22c55e; background: #dcfce7; cursor: default; }
+    .q-option.q-wrong     { border-color: #ef4444; background: #fee2e2; cursor: default; }
+    .q-option.q-revealed  { cursor: default; }
+    .q-badge {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+      border: 2px solid var(--border, #e5e7eb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--text-secondary);
+      transition: border-color .15s, color .15s;
+    }
+    .q-option.q-selected  .q-badge { border-color: var(--primary, #6366f1); color: var(--primary, #6366f1); }
+    .q-option.q-correct   .q-badge { border-color: #22c55e; color: #22c55e; }
+    .q-option.q-wrong     .q-badge { border-color: #ef4444; color: #ef4444; }
+
+    /* ── Progress bar ───────────────────────────────────────────────────── */
+    .q-progress-track { height: 4px; background: #e5e7eb; border-radius: 2px; }
+    .q-progress-fill  { height: 100%; border-radius: 2px; background: var(--primary,#6366f1); transition: width .3s; }
+
+    /* ── Toast / pills ──────────────────────────────────────────────────── */
     #toast-container {
       position: fixed; top: 20px; right: 20px; z-index: 9999;
       display: flex; flex-direction: column; gap: 8px;
     }
-    .toast { padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; animation: fadein 0.2s; }
+    .toast { padding: 10px 18px; border-radius: 8px; font-size: .9rem; font-weight: 500; animation: fadein .2s; }
     .toast-success { background: #dcfce7; color: #166534; }
     .toast-error   { background: #fee2e2; color: #991b1b; }
     .toast-info    { background: #dbeafe; color: #1e40af; }
-    @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+    @keyframes fadein { from { opacity:0; transform:translateY(-6px); } to { opacity:1; } }
+    .pill-active { background: var(--primary,#6366f1) !important; color:#fff !important; border-color:transparent !important; }
   </style>
 </head>
 <body>
@@ -53,17 +84,19 @@
     </div>
   </div>
 
-  <div id="modal-container"></div>
+  <!-- Quiz overlay (persistent shell, content swapped by JS) -->
+  <div id="quiz-overlay">
+    <div id="quiz-modal"></div>
+  </div>
 
   <script>
+    // ── Bootstrap ──────────────────────────────────────────────────────────
     const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
-
     document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
     document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
     document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
     document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
     document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
-
     if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
 
     document.getElementById('admin-logout-btn').addEventListener('click', async () => {
@@ -72,7 +105,12 @@
       location.href = '/login';
     });
 
-    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Close overlay when clicking outside modal
+    document.getElementById('quiz-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('quiz-overlay')) closeQuiz();
+    });
+
+    // ── Helpers ────────────────────────────────────────────────────────────
     function showToast(msg, type = 'info') {
       const el = document.createElement('div');
       el.className = `toast toast-${type}`;
@@ -87,16 +125,9 @@
       document.getElementById('topbar-xp').textContent  = `⚡ ${u.xp ?? 0} XP`;
     }
 
-    function openModal(html) {
-      document.getElementById('modal-container').innerHTML =
-        `<div class="modal-overlay"><div class="modal">${html}</div></div>`;
-      document.querySelector('#modal-container .modal-overlay').addEventListener('click', e => {
-        if (e.target.classList.contains('modal-overlay'))
-          document.getElementById('modal-container').innerHTML = '';
-      });
+    function closeQuiz() {
+      document.getElementById('quiz-overlay').classList.remove('open');
     }
-
-    function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
 
     async function apiFetch(method, path, body) {
       const res = await fetch('/api' + path, {
@@ -108,99 +139,172 @@
       return res.json();
     }
 
-    // â”€â”€ Quiz modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Quiz ───────────────────────────────────────────────────────────────
     async function openQuiz(quizId) {
-      openModal(`<div class="loading" style="padding:20px;text-align:center">Loading quiz&hellip;</div>`);
+      const modal = document.getElementById('quiz-modal');
+      modal.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-secondary)">Loading quiz&hellip;</div>`;
+      document.getElementById('quiz-overlay').classList.add('open');
 
       let detail;
       try { detail = await apiFetch('GET', `/quiz/${quizId}`); }
-      catch (e) { showToast(e.message, 'error'); closeModal(); return; }
+      catch (e) { showToast(e.message, 'error'); closeQuiz(); return; }
 
       const questions = detail.questions ?? [];
       let qi = 0, answers = [], revealed = false;
 
       function renderQuestion() {
-        const q = questions[qi];
-        if (!q) { renderResults(); return; }
-        document.querySelector('#modal-container .modal').innerHTML = `
-          <button class="modal-close" onclick="closeModal()">&#10005;</button>
-          <div class="text-sm text-secondary" style="margin-bottom:12px">Question ${qi + 1} of ${questions.length}</div>
-          <div style="font-weight:600;font-size:16px;margin-bottom:20px">${q.question}</div>
-          <div id="options">
-            ${(q.options ?? []).map((opt, i) => `<div class="quiz-option" data-idx="${i}">${opt}</div>`).join('')}
+        if (qi >= questions.length) { renderResults(); return; }
+
+        const q        = questions[qi];
+        const ci       = q.correct_indices?.length ? q.correct_indices : [q.correct_index ?? 0];
+        const correctSet  = new Set(ci);
+        const isMulti  = q.type === 'multiple_choice' && correctSet.size > 1;
+        const selectedSet = new Set();
+        const pct      = Math.round((qi / questions.length) * 100);
+
+        modal.innerHTML = `
+          <button onclick="closeQuiz()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary)">&#10005;</button>
+
+          <div style="margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:6px">
+              <span>Question ${qi + 1} / ${questions.length}</span>
+              <span>${detail.title}</span>
+            </div>
+            <div class="q-progress-track"><div class="q-progress-fill" style="width:${pct}%"></div></div>
           </div>
-          <div id="feedback" style="margin-top:14px;font-size:14px"></div>
-          <div style="margin-top:20px;text-align:right">
-            <button id="next-btn" class="btn btn-primary" disabled>
-              ${qi === questions.length - 1 ? 'Finish' : 'Next'}
+
+          <div style="font-weight:600;font-size:16px;line-height:1.5;margin-bottom:${isMulti ? '6px' : '20px'}">${q.question}</div>
+          ${isMulti ? `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">&#9745; Select all that apply</div>` : ''}
+
+          <div id="q-options" style="display:flex;flex-direction:column;gap:10px">
+            ${(q.options ?? []).map((opt, i) => `
+              <div class="q-option" data-idx="${i}">
+                <span class="q-badge">${String.fromCharCode(65 + i)}</span>
+                <span style="line-height:1.5">${opt}</span>
+              </div>`).join('')}
+          </div>
+
+          <div id="q-feedback" style="margin-top:16px;font-size:14px;line-height:1.5;min-height:20px"></div>
+
+          <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
+            ${isMulti
+              ? `<button id="q-check" class="btn btn-secondary" disabled>Submit Answer</button>`
+              : `<div></div>`}
+            <button id="q-next" class="btn btn-primary" style="display:none">
+              ${qi === questions.length - 1 ? 'See Results &#8594;' : 'Next &#8594;'}
             </button>
           </div>`;
 
-        document.querySelector('#options').addEventListener('click', e => {
-          const opt = e.target.closest('.quiz-option');
-          if (!opt || revealed) return;
-          revealed = true;
-          const selected = parseInt(opt.dataset.idx);
-          const correct  = q.correct_index ?? 0;
-          answers.push({ selected, correct });
+        // ── Reveal helpers ──
+        function showFeedback(isCorrect) {
+          document.getElementById('q-feedback').innerHTML = isCorrect
+            ? `<span style="color:#16a34a;font-weight:600">&#10003; Correct!</span>${q.explanation ? `<span style="color:var(--text-secondary)"> &mdash; ${q.explanation}</span>` : ''}`
+            : `<span style="color:#dc2626;font-weight:600">&#10007; Incorrect.</span>${q.explanation ? `<span style="color:var(--text-secondary)"> &mdash; ${q.explanation}</span>` : ''}`;
+        }
 
-          document.querySelectorAll('.quiz-option').forEach((o, i) => {
-            o.classList.add('revealed');
-            if (i === correct) o.classList.add('correct');
-            else if (i === selected) o.classList.add('wrong');
+        function revealAll(pickedSet) {
+          document.querySelectorAll('.q-option').forEach((o, i) => {
+            o.classList.add('q-revealed');
+            if (correctSet.has(i))       o.classList.add('q-correct');
+            else if (pickedSet.has(i))   o.classList.add('q-wrong');
           });
+          document.getElementById('q-next').style.display = '';
+        }
 
-          document.getElementById('feedback').innerHTML = selected === correct
-            ? `<span style="color:var(--success)">&#10003; Correct!</span> ${q.explanation ?? ''}`
-            : `<span style="color:var(--danger)">&#10007; Incorrect.</span> ${q.explanation ?? ''}`;
+        // ── Option clicks ──
+        document.getElementById('q-options').addEventListener('click', e => {
+          const opt = e.target.closest('.q-option');
+          if (!opt || revealed) return;
+          const idx = parseInt(opt.dataset.idx);
 
-          document.getElementById('next-btn').disabled = false;
+          if (isMulti) {
+            if (selectedSet.has(idx)) { selectedSet.delete(idx); opt.classList.remove('q-selected'); }
+            else                      { selectedSet.add(idx);    opt.classList.add('q-selected'); }
+            document.getElementById('q-check').disabled = selectedSet.size === 0;
+          } else {
+            revealed = true;
+            const isCorrect = correctSet.has(idx);
+            answers.push({ selected: idx, correct: [...correctSet][0] });
+            revealAll(new Set([idx]));
+            showFeedback(isCorrect);
+          }
         });
 
-        document.getElementById('next-btn').addEventListener('click', () => {
-          if (!revealed) return;
-          qi++; revealed = false;
-          renderQuestion();
+        // ── Check button (multi only) ──
+        if (isMulti) {
+          document.getElementById('q-check').addEventListener('click', () => {
+            if (revealed || selectedSet.size === 0) return;
+            revealed = true;
+            const selArr = [...selectedSet].sort((a, b) => a - b);
+            const corArr = [...correctSet].sort((a, b) => a - b);
+            const allCorrect = JSON.stringify(selArr) === JSON.stringify(corArr);
+            answers.push({ selected: selArr, correct: corArr });
+            revealAll(selectedSet);
+            showFeedback(allCorrect);
+            document.getElementById('q-check').disabled = true;
+          });
+        }
+
+        // ── Next button ──
+        document.getElementById('q-next').addEventListener('click', () => {
+          qi++; revealed = false; renderQuestion();
         });
       }
 
+      // ── Results screen ──
       async function renderResults() {
-        const correct = answers.filter(a => a.selected === a.correct).length;
-        const score   = Math.round((correct / questions.length) * 100);
-        document.querySelector('#modal-container .modal').innerHTML = `
-          <div style="text-align:center;padding:20px 0">
-            <div style="font-size:48px;margin-bottom:12px">${score >= 70 ? '&#127942;' : '&#128218;'}</div>
-            <h2 style="margin-bottom:8px">${score >= 70 ? 'Great work!' : 'Keep practising!'}</h2>
-            <p class="text-secondary" style="margin-bottom:20px">${correct} / ${questions.length} correct &middot; ${score}%</p>
-            <div id="xp-display" style="font-size:24px;font-weight:700;color:var(--primary,#6366f1);margin-bottom:24px"></div>
-            <button class="btn btn-primary" onclick="closeModal()">Done</button>
+        const correctCount = answers.filter(a => {
+          if (Array.isArray(a.selected))
+            return JSON.stringify([...a.selected].sort()) === JSON.stringify([...a.correct].sort());
+          return a.selected === a.correct;
+        }).length;
+        const score  = Math.round((correctCount / questions.length) * 100);
+        const passed = score >= 70;
+
+        modal.innerHTML = `
+          <div style="text-align:center;padding:16px 0">
+            <div style="font-size:52px;margin-bottom:14px">${passed ? '&#127942;' : '&#128218;'}</div>
+            <h2 style="margin-bottom:6px">${passed ? 'Great work!' : 'Keep practising!'}</h2>
+            <p style="color:var(--text-secondary);margin-bottom:20px">
+              ${correctCount} / ${questions.length} correct &middot; ${score}%
+            </p>
+
+            <div style="display:grid;grid-template-columns:repeat(${questions.length},1fr);gap:4px;margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto">
+              ${answers.map((a, i) => {
+                const ok = Array.isArray(a.selected)
+                  ? JSON.stringify([...a.selected].sort()) === JSON.stringify([...a.correct].sort())
+                  : a.selected === a.correct;
+                return `<div title="Q${i+1}" style="height:6px;border-radius:3px;background:${ok ? '#22c55e' : '#ef4444'}"></div>`;
+              }).join('')}
+            </div>
+
+            <div id="xp-display" style="font-size:28px;font-weight:700;color:var(--primary,#6366f1);margin-bottom:8px;min-height:36px"></div>
+            <p id="xp-msg" style="color:var(--text-secondary);font-size:13px;margin-bottom:24px"></p>
+            <button class="btn btn-primary" onclick="closeQuiz(); htmx.trigger(document.getElementById('skillgames-container') || document.querySelector('#quiz-grid')?.closest('[hx-get]'), 'load')">Done</button>
           </div>`;
 
         try {
           const res = await apiFetch('POST', `/quiz/${quizId}/submit`, { answers: answers.map(a => a.selected) });
           const xpEarned = res.xp_earned ?? 0;
+          document.getElementById('xp-msg').textContent = res.passed ? 'Quiz passed! 🎉' : 'Try again to improve your score.';
 
-          // Animate XP counter
           const xpEl = document.getElementById('xp-display');
           let n = 0;
-          const step = Math.ceil(xpEarned / 20) || 1;
+          const step = Math.ceil(xpEarned / 25) || 1;
           const timer = setInterval(() => {
             n = Math.min(n + step, xpEarned);
             xpEl.textContent = `+${n} XP`;
             if (n >= xpEarned) clearInterval(timer);
-          }, 50);
+          }, 40);
 
-          // Update sidebar/topbar immediately from the submit response
           const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
-          u.xp    = res.new_xp   ?? u.xp;
+          u.xp = res.new_xp ?? u.xp;
           u.level = res.new_level ?? u.level;
           localStorage.setItem('metis_user', JSON.stringify(u));
           refreshShell();
 
           showToast(
-            res.passed
-              ? `Quiz complete! +${xpEarned} XP earned`
-              : `Quiz done! +${xpEarned} XP — keep practising!`,
+            res.passed ? `Quiz complete! +${xpEarned} XP` : `Quiz done! +${xpEarned} XP`,
             res.passed ? 'success' : 'info'
           );
         } catch (e) { showToast(e.message, 'error'); }
@@ -209,9 +313,8 @@
       renderQuestion();
     }
 
-    // â”€â”€ Set up handlers after HTMX loads the quiz grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Wire up grid after HTMX load ───────────────────────────────────────
     document.body.addEventListener('htmx:afterSwap', () => {
-      // Filter pills
       document.querySelectorAll('#cat-pills .pill').forEach(pill => {
         pill.addEventListener('click', () => {
           document.querySelectorAll('#cat-pills .pill').forEach(p => p.classList.remove('active', 'pill-active'));
@@ -223,7 +326,6 @@
         });
       });
 
-      // Quiz card clicks
       document.querySelectorAll('.quiz-card:not(.locked)').forEach(card => {
         card.addEventListener('click', () => openQuiz(card.dataset.id));
       });
@@ -233,4 +335,3 @@
   </script>
 </body>
 </html>
-

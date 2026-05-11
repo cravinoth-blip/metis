@@ -1,14 +1,11 @@
 <div id="badges-tab-content">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+  <div style="margin-bottom:14px">
     <input type="text" name="q" value="{{ q }}" placeholder="Search badges&#8230;"
            class="form-input search-input" style="max-width:300px"
            hx-get="/api/admin/ui/tabs/badges"
            hx-target="#badges-tab-content"
            hx-swap="outerHTML"
            hx-trigger="keyup changed delay:400ms">
-    <button class="btn btn-primary btn-sm"
-            hx-get="/api/admin/ui/badges/form"
-            hx-target="#modal-container">+ New Badge</button>
   </div>
 
   <div class="card" style="padding:0;overflow:hidden">
