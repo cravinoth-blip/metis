@@ -101,7 +101,7 @@
           body: JSON.stringify({ email: $('login-email').value, password: $('login-password').value }),
         });
         const data = await res.json();
-        if (!res.ok) { showError('login-error', data.detail || 'Login failed'); return; }
+        if (!res.ok) { showError('login-error', typeof data.detail === 'string' ? data.detail : 'Login credentials invalid'); return; }
         await saveUserAndRedirect();
       } catch (e) {
         showError('login-error', 'Network error');
