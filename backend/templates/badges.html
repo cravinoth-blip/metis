@@ -1,0 +1,48 @@
+<div id="badges-tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search badges&#8230;"
+           class="form-input search-input" style="max-width:300px"
+           hx-get="/api/admin/ui/tabs/badges"
+           hx-target="#badges-tab-content"
+           hx-swap="outerHTML"
+           hx-trigger="keyup changed delay:400ms">
+    <button class="btn btn-primary btn-sm"
+            hx-get="/api/admin/ui/badges/form"
+            hx-target="#modal-container">+ New Badge</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="table">
+      <thead>
+        <tr><th>Icon</th><th>Name</th><th>Key</th><th>Description</th><th>Awarded</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for b in badges %}
+        <tr id="badge-row-{{ b.id }}">
+          <td style="font-size:1.4em;text-align:center">{{ b.emoji or '' }}</td>
+          <td style="font-weight:500">{{ b.name }}</td>
+          <td><code style="font-size:.8em;background:#f1f5f9;padding:2px 6px;border-radius:4px">{{ b.key }}</code></td>
+          <td style="font-size:.9em;color:var(--text-secondary)">{{ b.description or '&mdash;' }}</td>
+          <td style="text-align:center">{{ b.award_count }}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/badges/form?badge_id={{ b.id }}"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Edit</button>
+            <button class="btn btn-danger btn-sm"
+                    hx-delete="/api/admin/ui/badges/{{ b.id }}"
+                    hx-confirm="Delete this badge?"
+                    hx-target="#badge-row-{{ b.id }}"
+                    hx-swap="outerHTML">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:32px">No badges found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-sm text-secondary" style="margin-top:8px">
+    {{ badges|length }} badge{{ 's' if badges|length != 1 else '' }}
+  </div>
+</div>

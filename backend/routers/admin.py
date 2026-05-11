@@ -1273,3 +1273,97 @@ async def html_delete_ai_tool_ui(
     response = HTMLResponse("")
     response.headers["HX-Trigger"] = '{"showToast": "Tool deleted"}'
     return response
+
+
+# ── Badges HTMX ───────────────────────────────────────────────────────────────
+
+def _badges_list(db, q: str = ""):
+    query = db.query(models.Badge).filter(models.Badge.is_active == True)
+    if q:
+        t = f"%{q.lower()}%"
+        query = query.filter(
+            func.lower(models.Badge.name).like(t) |
+            func.lower(models.Badge.key).like(t) |
+            func.lower(models.Badge.description).like(t)
+        )
+    badges = query.order_by(models.Badge.name).all()
+    for b in badges:
+        b.award_count = db.query(models.UserBadge).filter(models.UserBadge.badge_id == b.id).count()
+    return badges
+
+
+@router.get("/ui/tabs/badges", response_class=HTMLResponse)
+async def html_tab_badges(
+    request: Request,
+    q: str = "",
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return templates.TemplateResponse("badges.html", {"request": request, "badges": _badges_list(db, q), "q": q})
+
+
+@router.get("/ui/badges/form", response_class=HTMLResponse)
+async def html_badge_form(
+    request: Request,
+    badge_id: Optional[int] = None,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first() if badge_id else None
+    return templates.TemplateResponse("badge_modal.html", {"request": request, "badge": badge})
+
+
+@router.post("/ui/badges", response_class=HTMLResponse)
+async def html_create_badge(
+    request: Request,
+    name: str = Form(...),
+    key: str = Form(...),
+    description: Optional[str] = Form(None),
+    emoji: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    db.add(models.Badge(name=name, key=key, description=description or None, emoji=emoji or None, is_active=True))
+    db.commit()
+    response = templates.TemplateResponse("badges.html", {"request": request, "badges": _badges_list(db), "q": ""})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Badge created!"}'
+    return response
+
+
+@router.put("/ui/badges/{badge_id}", response_class=HTMLResponse)
+async def html_update_badge(
+    request: Request,
+    badge_id: int,
+    name: str = Form(...),
+    key: str = Form(...),
+    description: Optional[str] = Form(None),
+    emoji: Optional[str] = Form(None),
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first()
+    if not badge:
+        raise HTTPException(status_code=404, detail="Badge not found")
+    badge.name = name
+    badge.key = key
+    badge.description = description or None
+    badge.emoji = emoji or None
+    db.commit()
+    response = templates.TemplateResponse("badges.html", {"request": request, "badges": _badges_list(db), "q": ""})
+    response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Badge updated!"}'
+    return response
+
+
+@router.delete("/ui/badges/{badge_id}", response_class=HTMLResponse)
+async def html_delete_badge(
+    badge_id: int,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first()
+    if badge:
+        badge.is_active = False
+        db.commit()
+    response = HTMLResponse("")
+    response.headers["HX-Trigger"] = '{"showToast": "Badge deleted"}'
+    return response

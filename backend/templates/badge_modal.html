@@ -1,0 +1,39 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">{{ 'Edit' if badge else 'New' }} Badge</h3>
+
+    {% if badge %}
+    <form hx-put="/api/admin/ui/badges/{{ badge.id }}" hx-target="#badges-tab-content" hx-swap="outerHTML">
+    {% else %}
+    <form hx-post="/api/admin/ui/badges" hx-target="#badges-tab-content" hx-swap="outerHTML">
+    {% endif %}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input name="name" required class="form-input" value="{{ badge.name if badge else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Key *</label>
+          <input name="key" required class="form-input" placeholder="e.g. quiz_ace"
+                 value="{{ badge.key if badge else '' }}" {% if badge %}readonly style="background:#f8fafc;color:var(--text-secondary)"{% endif %}>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:3fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input name="description" class="form-input" value="{{ badge.description if badge else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emoji</label>
+          <input name="emoji" class="form-input" placeholder="🏆" value="{{ badge.emoji if badge else '' }}">
+        </div>
+      </div>
+
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
