@@ -1,0 +1,10 @@
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/.env
+backend/*.log
+backend/metis.db
+.git
+**/__pycache__/
+**/*.pyc

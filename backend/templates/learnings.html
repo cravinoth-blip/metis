@@ -1,0 +1,53 @@
+<div id="learnings-tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by title or category&#8230;"
+           class="form-input search-input" style="max-width:300px"
+           hx-get="/api/admin/ui/tabs/learnings"
+           hx-target="#learnings-tab-content"
+           hx-swap="outerHTML"
+           hx-trigger="keyup changed delay:400ms">
+    <button class="btn btn-primary btn-sm"
+            hx-get="/api/admin/ui/learnings/form"
+            hx-target="#modal-container">+ New Learning</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="table">
+      <thead>
+        <tr><th>Title</th><th>Category</th><th>Level</th><th>Modules</th><th>Duration</th><th>XP</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for lr in learnings %}
+        <tr id="lr-row-{{ lr.id }}">
+          <td style="font-weight:500">{{ lr.title }}</td>
+          <td>{{ lr.category or '-' }}</td>
+          <td>{{ lr.level }}</td>
+          <td style="text-align:center;font-weight:600">{{ lr.module_count }}</td>
+          <td>{{ (lr.estimated_duration_min | string + ' min') if lr.estimated_duration_min else '' }}</td>
+          <td>{{ lr.xp_reward }}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/learnings/form?learning_id={{ lr.id }}"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Edit</button>
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/learnings/{{ lr.id }}/modules"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Modules</button>
+<button class="btn btn-secondary btn-sm" 
+        onclick="window.location.href='/add-module?learning_id={{ lr.id }}'"
+        style="margin-right:4px">+ Add</button>            <button class="btn btn-danger btn-sm"
+                    hx-delete="/api/admin/ui/learnings/{{ lr.id }}"
+                    hx-confirm="Deactivate this learning resource?"
+                    hx-target="#lr-row-{{ lr.id }}"
+                    hx-swap="outerHTML">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:32px">No learning resources yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-sm text-secondary" style="margin-top:8px">{{ learnings|length }} resource{{ 's' if learnings|length != 1 else '' }}</div>
+</div>

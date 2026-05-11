@@ -1,0 +1,51 @@
+%%{init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': 'rgba(243, 177, 90, 1)',
+'primaryTextColor': '#000000ff',
+'primaryBorderColor': '#e45959ff'
+}
+}}%%
+flowchart TD
+    %% Actors
+    U[Users] -->|HTTPS| API
+    A[Administrators] -->|HTTPS| API
+
+    subgraph Application [FastAPI Web Application]
+        API["FastAPI App<br>main.py"]
+        Auth[JWT Auth<br>auth.py]
+
+        subgraph Routers [API Routers]
+            AuthR[auth_router<br>/api/auth]
+            UsersR[users<br>/api/users]
+            QuizR[quizzes<br>/api/quiz]
+            EventsR[events<br>/api/events]
+            LearningsR[learnings<br>/api/learnings]
+            AIToolsR[ai_tools<br>/api/ai-tools]
+            AdminR[admin<br>/api/admin]
+        end
+
+        subgraph SSR [Server-Side Rendering]
+            Jinja[Jinja2 Templates + HTMX]
+            UserPages[User Pages · Dashboard · Skillgames · Learning · Events · AI Tools]
+            AdminPages[Admin Panel · Overview · Users · Learnings · Events · AI Tools]
+            Jinja --> UserPages
+            Jinja --> AdminPages
+        end
+
+        API --> Routers
+        Auth -.->|JWT dependency| Routers
+        Routers -->|inject data| Jinja
+    end
+
+    subgraph DataLayer [Data Layer]
+        DB[(SQL Database)]
+
+    end
+
+    Routers -->|SQLAlchemy ORM| DB
+    Seeders[Database Seeders<br>database_seeders/<br>Run on startup] -->|seed initial data| DB
+    API -.->|triggers on startup| Seeders
+
+    %% Static Assets
+    Static[Static Files<br>/static/css/] -.->|served| U

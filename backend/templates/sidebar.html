@@ -1,0 +1,33 @@
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">M</div>
+    <span class="logo-text">Metis</span>
+  </div>
+  <nav id="nav-links">
+    <a href="/skillgames" class="nav-link {% if active_page == 'skillgames' %}active{% endif %}">
+      <span class="nav-icon">&#127918;</span><span class="nav-label">Skill Games</span>
+    </a>
+    <a href="/learning" class="nav-link {% if active_page == 'learning' %}active{% endif %}">
+      <span class="nav-icon">&#128218;</span><span class="nav-label">Learning</span>
+    </a>
+    <a href="/whatson" class="nav-link {% if active_page == 'whatson' %}active{% endif %}">
+      <span class="nav-icon">&#128197;</span><span class="nav-label">AI Updates</span>
+    </a>
+    <a href="/aitools" class="nav-link {% if active_page == 'aitools' %}active{% endif %}">
+      <span class="nav-icon">&#129302;</span><span class="nav-label">AI Tools</span>
+    </a>
+    <a href="/admin" class="nav-link {% if active_page == 'admin' %}active{% endif %} hidden" id="admin-link">
+      <span class="nav-icon">&#9881;&#65039;</span><span class="nav-label">Admin</span>
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="sidebar-user-card">
+      <a href="/dashboard" style="text-decoration:none"><div class="avatar" id="sidebar-avatar" style="cursor:pointer">??</div></a>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebar-name">&mdash;</div>
+        <div class="sidebar-user-xp" id="sidebar-xp">0 XP &middot; Lv 0</div>
+      </div>
+    </div>
+    <button id="admin-logout-btn">&#128682; Sign out</button>
+  </div>
+</aside>

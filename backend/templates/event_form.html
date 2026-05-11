@@ -1,0 +1,76 @@
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:16px">{{ 'Edit' if event else 'New' }} {{ 'Workshop' if event_type == 'workshop' else 'Webinar' }}</h3>
+
+    {% if event %}
+    <form hx-put="/api/admin/ui/events/{{ event.id }}" hx-target="#events-tab-content" hx-swap="outerHTML">
+    {% else %}
+    <form hx-post="/api/admin/ui/events" hx-target="#events-tab-content" hx-swap="outerHTML">
+    {% endif %}
+      <input type="hidden" name="event_type" value="{{ event_type }}">
+
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input name="title" required class="form-input" value="{{ event.title if event else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-input" rows="3">{{ event.description if event else '' }}</textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Organizer</label>
+          <input name="organizer" class="form-input" value="{{ event.organizer if event else '' }}">
+        </div>
+        {% if event_type == 'webinar' %}
+        <div class="form-group">
+          <label class="form-label">Speaker</label>
+          <input name="speaker" class="form-input" value="{{ event.speaker if event else '' }}">
+        </div>
+        {% else %}
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input name="location" class="form-input" value="{{ event.location if event else '' }}">
+        </div>
+        {% endif %}
+        <div class="form-group">
+          <label class="form-label">Format</label>
+          <select name="event_format" class="form-input form-select">
+            <option value="">&#8212; select &#8212;</option>
+            {% for f in ['in-person','online','hybrid','other'] %}
+            <option {% if event and event.format == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Duration (min)</label>
+          <input type="number" name="duration_minutes" class="form-input" min="1" value="{{ event.duration_minutes if event and event.duration_minutes else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" name="event_date" class="form-input" value="{{ event.event_date if event and event.event_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time</label>
+          <input type="time" name="event_time" class="form-input" value="{{ event.event_time if event and event.event_time else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">XP Reward</label>
+          <input type="number" name="xp_reward" class="form-input" min="0" value="{{ event.xp_reward if event else 0 }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Registration URL</label>
+          <input name="registration_url" class="form-input" placeholder="https://&#8230;" value="{{ event.registration_url if event else '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags (comma-separated)</label>
+        <input name="tags" class="form-input" placeholder="AI, beginner" value="{{ event.tags if event else '' }}">
+      </div>
+      <div style="text-align:right;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

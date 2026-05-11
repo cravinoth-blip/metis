@@ -1,0 +1,82 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': 'rgba(243, 177, 90, 1)',
+    'primaryTextColor': '#000000ff',
+    'primaryBorderColor': '#e45959ff'
+  }
+}}%%
+flowchart TD
+    %% Entry
+    Browser[Browser] -->|unauthenticated| Login
+    Browser -->|authenticated| Shell
+
+    %% App Shell
+    subgraph Shell [App Shell - Authenticated Layout]
+        Sidebar["sidebar.html<br>Navigation · User Profile · XP Level · Admin Link"]
+        TopBar["Top Bar<br>Page Title · XP Badge · Avatar Initials"]
+        Content["#content<br>HTMX Target Area"]
+    end
+
+    %% Page Routes
+    subgraph Pages [Page Routes - main.py]
+        Login["login.html<br>/login<br>Login + Register forms"]
+        Dashboard["dashboard_page.html<br>/dashboard"]
+        Skillgames["skillgames_page.html<br>/skillgames"]
+        Learning["learning_page.html<br>/learning"]
+        Whatson["whatson_page.html<br>/whatson"]
+        AITools["aitools_page.html<br>/aitools"]
+        Admin["admin_base.html<br>/admin"]
+        ModuleEditor["add_module.html · edit_module.html<br>/add-module · /edit-module<br>Quill Rich Text Editor"]
+    end
+
+    %% HTMX Fragments
+    subgraph Fragments [HTMX Content Fragments - HTML responses]
+        DashFrag["dashboard.html<br>Stats · XP · Streak · Progress"]
+        SkillFrag["skillgames.html<br>Quiz Cards · Category Filters · Best Scores"]
+        LearnFrag["learning_list.html<br>Course Cards · Search · Module Lists · Progress Bars"]
+        WhatsonFrag["whatson_list.html<br>Event Cards · Type Badges · Registration"]
+        AIFrag["aitools_list.html<br>Tool Cards · Enterprise · Free · Log Use"]
+        AdminFrag["Admin Tab Fragments<br>overview · users · learnings · events · ai-tools"]
+    end
+
+    %% Modal Components
+    subgraph Modals [Modal Components]
+        QuizModal["Quiz Modal<br>Question Carousel · Answer Reveal · XP Result screen"]
+        ContentModals["Content Modals<br>learning_modal · learning_module_modal<br>user_modal · ai_tool_modal · event_form"]
+    end
+
+    %% Client State
+    subgraph ClientState [Client State - localStorage]
+        Token["metis_token<br>JWT Bearer token"]
+        UserObj["metis_user<br>avatar_initials · is_admin · xp · level"]
+    end
+
+    %% Auth flow
+    Login -->|"POST /api/auth/login<br>POST /api/auth/register"| BackendAuth["/api/auth"]
+    BackendAuth -->|"JWT + user object"| Token
+    BackendAuth -->|"JWT + user object"| UserObj
+    Token -.->|"htmx:configRequest<br>Authorization: Bearer"| Fragments
+
+    %% Shell loads pages
+    Shell --> Pages
+
+    %% Pages load HTMX fragments
+    Dashboard -->|"hx-get /api/users/me/ui/dashboard"| DashFrag
+    Skillgames -->|"hx-get /api/quiz/ui/skillgames"| SkillFrag
+    Learning -->|"hx-get /api/learnings/ui/learnings"| LearnFrag
+    Whatson -->|"hx-get /api/events/ui"| WhatsonFrag
+    AITools -->|"hx-get /api/ai-tools/ui"| AIFrag
+    Admin -->|"hx-get /api/admin/ui/tabs/{tab}"| AdminFrag
+
+    %% Fragments open modals
+    SkillFrag -->|quiz card click| QuizModal
+    LearnFrag -->|module click| ContentModals
+    AdminFrag -->|edit / add click| ContentModals
+
+    %% Modals call backend
+    QuizModal -->|"POST /api/quiz/{id}/submit"| Backend[FastAPI Backend]
+    ContentModals -->|"HTMX POST · PUT · DELETE"| Backend
+
+    %% Static assets
+    Static["/static/css/styles.css<br>Custom CSS Design System"] -.->|loaded by| Shell

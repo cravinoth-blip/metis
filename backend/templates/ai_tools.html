@@ -1,0 +1,76 @@
+<div id="ai-tools-tab-content">
+  <input type="hidden" name="tool_type" value="{{ tool_type }}">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by name, category, tag&hellip;"
+             class="form-input search-input" style="max-width:280px"
+             hx-get="/api/admin/ui/tabs/ai-tools"
+             hx-target="#ai-tools-tab-content"
+             hx-swap="outerHTML"
+             hx-trigger="keyup changed delay:400ms"
+             hx-include="[name='tool_type']">
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm {% if tool_type == 'all' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/ai-tools?tool_type=all"
+                hx-target="#ai-tools-tab-content" hx-swap="outerHTML">All</button>
+        <button class="btn btn-sm {% if tool_type == 'enterprise' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/ai-tools?tool_type=enterprise"
+                hx-target="#ai-tools-tab-content" hx-swap="outerHTML">Enterprise</button>
+        <button class="btn btn-sm {% if tool_type == 'free' %}pill-active{% endif %}"
+                hx-get="/api/admin/ui/tabs/ai-tools?tool_type=free"
+                hx-target="#ai-tools-tab-content" hx-swap="outerHTML">Free</button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm"
+            hx-get="/api/admin/ui/ai-tools/form"
+            hx-target="#modal-container">+ New Tool</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="table">
+      <thead>
+        <tr><th></th><th>Name</th><th>Category</th><th>Provider</th><th>Tags</th><th>URL</th><th>Type</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for t in tools %}
+        <tr id="tool-row-{{ t.id }}">
+          <td style="font-size:1.3em;text-align:center">{{ t.emoji_logo or '' }}</td>
+          <td style="font-weight:500">{{ t.name }}</td>
+          <td>{{ t.category or 'No category' }}</td>
+          <td style="font-size:.9em">{{ t.provider or '&mdash;' }}</td>
+          <td style="font-size:.85em;color:var(--text-secondary)">{{ t.tags or '&mdash;' }}</td>
+          <td>
+            {% if t.url %}
+            <a href="{{ t.url }}" target="_blank" style="color:var(--primary)">Link</a>
+            {% else %}&mdash;{% endif %}
+          </td>
+          <td>
+            {% if t.is_enterprise %}
+            <span style="font-size:.75em;font-weight:600;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534">Enterprise</span>
+            {% else %}
+            <span style="font-size:.75em;font-weight:600;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#991b1b">Free</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    hx-get="/api/admin/ui/ai-tools/form?tool_id={{ t.id }}"
+                    hx-target="#modal-container"
+                    style="margin-right:4px">Edit</button>
+            <button class="btn btn-danger btn-sm"
+                    hx-delete="/api/admin/ui/ai-tools/{{ t.id }}"
+                    hx-confirm="Delete this tool?"
+                    hx-target="#tool-row-{{ t.id }}"
+                    hx-swap="outerHTML">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:32px">No AI tools found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-sm text-secondary" style="margin-top:8px">
+    {{ tools|length }} tool{{ 's' if tools|length != 1 else '' }}
+  </div>
+</div>

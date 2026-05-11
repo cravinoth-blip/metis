@@ -2,7 +2,9 @@ version: '3.9'
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-me-to-a-long-random-string-32chars}
       - DATABASE_URL=sqlite:////app/data/metis.db
@@ -10,23 +12,9 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=480
     volumes:
       - metis_data:/app/data
-    restart: unless-stopped
-    networks:
-      - metis
-
-  frontend:
-    build: ./frontend
     ports:
-      - "80:80"
-    depends_on:
-      - backend
+      - "80:8000"
     restart: unless-stopped
-    networks:
-      - metis
 
 volumes:
   metis_data:
-
-networks:
-  metis:
-    driver: bridge

@@ -1,0 +1,59 @@
+<div id="dashboard-content" style="padding:24px">
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-emoji">&#9889;</div>
+      <div class="stat-value">{{ user.xp }}</div>
+      <div class="stat-label">Total XP</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-emoji">&#127942;</div>
+      <div class="stat-value">{{ level }}</div>
+      <div class="stat-label">Level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-emoji">&#128293;</div>
+      <div class="stat-value">{{ user.streak }}</div>
+      <div class="stat-label">Day streak</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-emoji">&#128221;</div>
+      <div class="stat-value">{{ quiz_count }}</div>
+      <div class="stat-label">Quizzes done</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="gap:16px">
+
+    <div class="card">
+      <div class="card-title">Skill breakdown</div>
+      {% if skill_breakdown %}
+        {% for skill, pct in skill_breakdown.items() %}
+        <div style="margin-bottom:14px">
+          <div class="flex justify-between text-sm" style="margin-bottom:4px">
+            <span>{{ skill }}</span><span>{{ pct }}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:{{ pct }}%"></div></div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-secondary text-sm">Complete quizzes to see skill data.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recent activity</div>
+      {% if recent_activity %}
+        {% for a in recent_activity %}
+        <div class="flex justify-between items-center" style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <span class="text-sm">{{ a.quiz_title }}</span>
+          <span class="text-sm font-bold" style="color:var(--success)">+{{ a.xp_earned }} XP</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-secondary text-sm">No activity yet. Play a quiz!</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>

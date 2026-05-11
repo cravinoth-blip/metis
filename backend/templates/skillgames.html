@@ -1,0 +1,41 @@
+{% macro diff_class(d) %}{% if d == 'intermediate' %}diff-intermediate{% elif d == 'advanced' %}diff-advanced{% else %}diff-beginner{% endif %}{% endmacro %}
+
+<div id="skillgames-container" style="padding:24px">
+
+  <div class="filter-pills" id="cat-pills">
+    {% for cat in categories %}
+    <span class="pill {% if loop.first %}active{% endif %}" data-cat="{{ cat }}">{{ cat }}</span>
+    {% endfor %}
+  </div>
+
+  <div class="quiz-grid" id="quiz-grid">
+    {% for q in quizzes %}
+    {% set locked = user.level < q.min_level %}
+    <div class="quiz-card {% if locked %}locked{% endif %}"
+         data-id="{{ q.id }}"
+         data-category="{{ q.category or 'All' }}">
+
+      <span class="diff-badge {{ diff_class(q.difficulty) }}">{{ q.difficulty or 'beginner' }}</span>
+      {% if locked %}
+      <span class="diff-badge" style="background:#fef3c7;color:#d97706;margin-left:4px">Lv {{ q.min_level }}+</span>
+      {% endif %}
+
+      <div style="font-weight:600;margin-bottom:6px">{{ q.title }}</div>
+      <div class="text-sm text-secondary">{{ q.description or '' }}</div>
+      <div class="text-sm text-secondary" style="margin-top:10px">
+        &#128194; {{ q.category or '&mdash;' }} &middot; {{ q.question_count }} questions
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+        {% if q.xp_reward %}
+        <span style="font-size:12px;font-weight:600;color:var(--primary,#6366f1)">&#9889; {{ q.xp_reward }} XP</span>
+        {% endif %}
+        {% if q.best_score is not none %}
+        <span class="text-sm" style="color:var(--success)">&#10003; Best: {{ q.best_score }}%</span>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div>

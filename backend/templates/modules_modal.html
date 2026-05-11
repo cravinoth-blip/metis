@@ -1,0 +1,84 @@
+<div class="modal-overlay">
+  <div class="modal" style="width:640px">
+    <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
+    <h3 style="margin-bottom:4px">Modules</h3>
+    <p class="text-sm text-secondary" style="margin-bottom:16px">Drag and drop rows to reorder.</p>
+
+    <div class="card" style="padding:0;overflow:visible;margin-bottom:16px">
+      <table class="table">
+        <thead>
+          <tr><th style="width:36px"></th><th>Title</th><th>Duration</th><th>XP</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="mod-tbody">
+          {% for m in modules %}
+          <tr class="draggable-module" draggable="true" data-id="{{ m.id }}" id="mod-row-{{ m.id }}" style="cursor:grab">
+            <td style="color:var(--text-secondary);text-align:center;user-select:none">&#9776;</td>
+            <td style="font-weight:500">{{ m.title }}</td>
+            <td>{{ (m.duration_min | string + ' min') if m.duration_min else '&#8212;' }}</td>
+            <td>{{ m.xp_reward }} XP</td>
+            <td style="white-space:nowrap">
+              <a href="/edit-module?module_id={{ m.id }}" class="btn btn-secondary btn-sm" style="margin-right:4px">Edit</a>
+              <button class="btn btn-danger btn-sm"
+                      hx-delete="/api/admin/ui/learning-modules/{{ m.id }}"
+                      hx-confirm="Delete this module?"
+                      hx-target="#mod-row-{{ m.id }}"
+                      hx-swap="outerHTML">Delete</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px">No modules yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <a href="/add-module?learning_id={{ learning_id }}" class="btn btn-secondary btn-sm">+ Add Module</a>
+      <button id="save-order-btn" class="btn btn-primary btn-sm">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const tbody = document.getElementById('mod-tbody');
+  const saveBtn = document.getElementById('save-order-btn');
+  const learningId = '{{ learning_id }}';
+  let draggedRow = null;
+
+  tbody.addEventListener('dragstart', e => {
+    draggedRow = e.target.closest('.draggable-module');
+    if (draggedRow) setTimeout(() => draggedRow.style.opacity = '0.4', 0);
+  });
+  tbody.addEventListener('dragend', e => {
+    if (draggedRow) { draggedRow.style.opacity = '1'; draggedRow = null; }
+  });
+  tbody.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!draggedRow) return;
+    const rows = [...tbody.querySelectorAll('.draggable-module:not([style*="opacity: 0.4"])')];
+    const after = rows.reduce((closest, row) => {
+      const box = row.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height / 2;
+      return (offset < 0 && offset > closest.offset) ? { offset, element: row } : closest;
+    }, { offset: -Infinity }).element;
+    after ? tbody.insertBefore(draggedRow, after) : tbody.appendChild(draggedRow);
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const ids = [...tbody.querySelectorAll('.draggable-module')].map(r => r.dataset.id);
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      await fetch(`/api/courses/learnings/${learningId}/modules/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: ids }),
+      });
+      saveBtn.textContent = 'Saved!';
+      setTimeout(() => { saveBtn.disabled = false; saveBtn.textContent = 'Save Order'; }, 1500);
+    } catch {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save Order';
+    }
+  });
+})();
+</script>

@@ -1,4 +1,4 @@
-import httpx
+﻿import httpx
 from bs4 import BeautifulSoup
 import asyncio
 import xml.etree.ElementTree as ET
@@ -285,20 +285,6 @@ async def _fetch_rss_news(max_total: int = 6) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 TRAINING_EVENTS = [
     {
-        "title": "AI in Medical Writing: Practical Prompting",
-        "description": "Hands-on session covering prompt frameworks for CSR drafting, plain language summaries, and navigating hallucination risks.",
-        "event_type": "lunch",
-        "host": "Metis Learning Team",
-        "event_date": "Tue 25 March 2025",
-        "event_time": "12:30 - 13:30",
-        "location": "Conference Room B + Teams",
-        "tags": '["Medical Writing", "Prompting"]',
-        "xp_reward": 80,
-        "capacity": 20,
-        "registered_count": 0,
-        "source_url": "",
-    },
-    {
         "title": "BioRender Masterclass: MOA Diagrams",
         "description": "Full hands-on workshop building mechanism of action figures using BioRender. From blank canvas to publication-ready figure.",
         "event_type": "workshop",
@@ -339,20 +325,6 @@ TRAINING_EVENTS = [
         "capacity": 0,
         "registered_count": 0,
         "source_url": "https://openai.com/enterprise",
-    },
-    {
-        "title": "DeepL Pro for Global Publications",
-        "description": "Learn to use DeepL Pro for translating manuscripts, labels, and patient materials while preserving formatting and scientific terminology.",
-        "event_type": "lunch",
-        "host": "Global Content Team",
-        "event_date": "Tue 1 April 2025",
-        "event_time": "12:30 - 13:15",
-        "location": "Virtual - Teams",
-        "tags": '["Translation", "DeepL"]',
-        "xp_reward": 60,
-        "capacity": 25,
-        "registered_count": 0,
-        "source_url": "",
     },
     {
         "title": "AI-Assisted Literature Screening with Elicit",

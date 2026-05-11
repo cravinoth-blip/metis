@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin &mdash; Metis</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    .admin-tabs {
+      display: flex; gap: 2px; padding: 0 24px;
+      background: #fff; border-bottom: 1px solid var(--border, #e5e7eb);
+      flex-shrink: 0;
+    }
+    .admin-tabs .tab-btn {
+      padding: 12px 20px; border: none; background: none; cursor: pointer;
+      font-size: 0.9rem; color: var(--text-secondary, #6b7280);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .admin-tabs .tab-btn:hover { color: var(--primary, #6366f1); }
+    .admin-tabs .tab-btn.active {
+      color: var(--primary, #6366f1);
+      border-bottom-color: var(--primary, #6366f1);
+      font-weight: 600;
+    }
+    #content { display: flex; flex-direction: column; overflow: hidden; }
+    #admin-pane { padding: 24px; flex: 1; overflow-y: auto; }
+    #modal-container .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    #modal-container .modal {
+      background: #fff; border-radius: 12px; padding: 24px;
+      width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none; font-size: 1.1rem; cursor: pointer;
+      color: var(--text-secondary, #6b7280);
+    }
+    #toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast { padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; animation: fadein 0.2s; }
+    .toast-success { background: #dcfce7; color: #166534; }
+    .toast-error   { background: #fee2e2; color: #991b1b; }
+    .toast-info    { background: #dbeafe; color: #1e40af; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .pill-active { background: var(--primary, #6366f1) !important; color: #fff !important; border-color: transparent !important; }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div id="app">
+    
+    {% include 'sidebar.html' %}
+
+
+    <div id="main-wrapper">
+      {% set page_title = 'Admin' %}
+      {% include 'topbar.html' %}
+
+      <nav class="admin-tabs" id="admin-tabs">
+        <button class="tab-btn active"
+                hx-get="/api/admin/ui/tabs/overview"
+                hx-target="#admin-pane"
+                hx-trigger="load, click">Overview</button>
+        <button class="tab-btn"
+                hx-get="/api/admin/ui/tabs/users"
+                hx-target="#admin-pane">Users</button>
+        <button class="tab-btn"
+                hx-get="/api/admin/ui/tabs/learnings"
+                hx-target="#admin-pane">Learnings</button>
+        <button class="tab-btn"
+                hx-get="/api/admin/ui/tabs/events"
+                hx-target="#admin-pane">Workshops &amp; Webinars</button>
+        <button class="tab-btn"
+                hx-get="/api/admin/ui/tabs/ai-tools"
+                hx-target="#admin-pane">AI Tools</button>
+      </nav>
+
+      <main id="content">
+        <div id="admin-pane"><div class="loading">Loading&hellip;</div></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-container"></div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
+
+    document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
+    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
+    document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
+    document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
+    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
+
+    // Always visible on the admin page — user is guaranteed to be an admin
+    document.getElementById('admin-link').classList.remove('hidden');
+
+    document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('metis_user');
+      location.href = '/login';
+    });
+
+    document.getElementById('admin-tabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      document.querySelectorAll('.admin-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+
+    document.body.addEventListener('closeModal', () => {
+      document.getElementById('modal-container').innerHTML = '';
+    });
+
+    function showToast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+    document.body.addEventListener('showToast', evt => showToast(evt.detail.value || evt.detail));
+    document.body.addEventListener('htmx:responseError', () => showToast('An error occurred.', 'error'));
+  </script>
+</body>
+</html>
+

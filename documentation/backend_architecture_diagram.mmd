@@ -1,0 +1,57 @@
+%%{init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': 'rgba(243, 177, 90, 1)',
+'primaryTextColor': '#000000ff',
+'primaryBorderColor': '#e45959ff'
+}
+}}%%
+flowchart TD
+
+    %% Backend Layer
+    subgraph Backend [Backend - FastAPI]
+        direction TB
+
+        %% API Routers
+        subgraph Routers [API Endpoints]
+            Auth["/api/auth<br/>Register, Login, JWT"]
+            Users["/api/users<br/>Profile, Stats, Log Usage"]
+            Quiz["/api/quiz<br/>List, Submit, History"]
+            Events["/api/events<br/>List, Register"]
+            Courses["/api/learnings<br/>Modules, Completion"]
+            Tools["/api/ai-tools<br/>Catalogue"]
+            Admin["/api/admin<br/>CRUD, Analytics, Scrape"]
+        end
+
+
+        %% Security
+        Security[JWT Middleware & Role Validation]
+    end
+
+    %% Data Layer
+    subgraph DataLayer [Data Layer]
+        ORM[SQLAlchemy ORM]
+        DB[(SQL Database)]
+    end
+
+
+    %% Connections
+
+    Security --> Auth
+    Security --> Users
+    Security --> Quiz
+    Security --> Events
+    Security --> Courses
+    Security --> Tools
+    Security -->|Requires is_admin=true| Admin
+
+    Auth --> ORM
+    Users --> ORM
+    Quiz --> ORM
+    Events --> ORM
+    Courses --> ORM
+    Tools --> ORM
+    Admin --> ORM
+
+
+    ORM --> DB

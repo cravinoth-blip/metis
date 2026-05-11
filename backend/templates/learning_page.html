@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning &mdash; Metis</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    #modal-container .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    #modal-container .modal {
+      background: #fff; border-radius: 12px; padding: 24px;
+      width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none; font-size: 1.1rem; cursor: pointer;
+      color: var(--text-secondary, #6b7280);
+    }
+    #toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast { padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; animation: fadein 0.2s; }
+    .toast-success { background: #dcfce7; color: #166534; }
+    .toast-error   { background: #fee2e2; color: #991b1b; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+    
+    /* Updated Fix: Target modals and Quill editors generally instead of specific IDs */
+    .modal ul, .ql-editor ul {
+      list-style-type: disc !important;
+      padding-left: 1.5rem !important;
+      margin-bottom: 1rem;
+    }
+    .modal ol, .ql-editor ol {
+      list-style-type: decimal !important;
+      padding-left: 1.5rem !important;
+      margin-bottom: 1rem;
+    }
+    .modal li, .ql-editor li {
+      list-style-type: inherit !important;
+    }
+    .modal ul ul, .ql-editor ul ul {
+      list-style-type: circle !important; /* Nested bullets */
+    }
+
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div id="app">
+    {% include 'sidebar.html' %}
+
+    <div id="main-wrapper">
+      {% set page_title = 'Learning' %}
+      {% include 'topbar.html' %}
+
+      <main id="content" style="overflow-y:auto">
+        <div id="learning-container"
+             hx-get="/api/learnings/ui/learnings"
+             hx-trigger="load"
+             hx-swap="outerHTML">
+          <div class="loading" style="padding:24px">Loading&hellip;</div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-container"></div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
+
+    document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
+    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
+    document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
+    document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
+    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
+
+    if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
+
+    document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('metis_user');
+      location.href = '/login';
+    });
+
+    //  Helpers 
+    function showToast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    document.body.addEventListener('showToast',  evt => showToast(evt.detail.value || evt.detail));
+    document.body.addEventListener('closeModal', ()  => { document.getElementById('modal-container').innerHTML = ''; });
+    document.body.addEventListener('updateXP',   evt => {
+      const { xp, level } = evt.detail;
+      document.getElementById('topbar-xp').textContent  = `⚡ ${xp} XP`;
+      document.getElementById('sidebar-xp').textContent = `${xp} XP · Lv ${level}`;
+      const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
+      u.xp = xp; u.level = level;
+      localStorage.setItem('metis_user', JSON.stringify(u));
+    });
+
+    //  Expand / collapse module list 
+    function toggleModules(lrId, header) {
+      const el    = document.getElementById('mods-' + lrId);
+      const arrow = header.querySelector('.lr-arrow');
+      if (el.dataset.loaded) {
+        const visible = el.style.display !== 'none';
+        el.style.display = visible ? 'none' : '';
+        if (arrow) arrow.textContent = visible ? '▼' : '▲';
+      } else {
+        el.style.display = '';
+        if (arrow) arrow.textContent = '▲';
+      }
+    }
+
+    // Mark modules div as loaded after HTMX swap; start timer when modal opens
+    document.body.addEventListener('htmx:afterSwap', evt => {
+      if (evt.target.id && evt.target.id.startsWith('mods-')) {
+        evt.target.dataset.loaded = '1';
+      }
+      if (evt.target.id === 'modal-container') {
+        const btn = document.getElementById('complete-btn');
+        if (btn) startTimer(btn);
+      }
+    });
+
+    function startTimer(btn) {
+      const msg = document.getElementById('timer-msg');
+      let left = 5;
+      const t = setInterval(() => {
+        left--;
+        if (left > 0 && msg) {
+          msg.textContent = `Read for ${left}s to complete…`;
+        } else {
+          clearInterval(t);
+          if (msg) msg.textContent = '';
+          btn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    document.body.addEventListener('htmx:responseError', () => showToast('An error occurred.', 'error'));
+
+    document.body.addEventListener('learningCompleted', () => {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9998';
+      banner.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:40px 48px;text-align:center;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+          <div style="font-size:52px;margin-bottom:16px">🎉</div>
+          <div style="font-size:22px;font-weight:700;margin-bottom:8px">Learning Complete!</div>
+          <div style="color:var(--text-secondary);font-size:14px;margin-bottom:24px">You've finished all modules. Keep it up!</div>
+          <button onclick="this.closest('[style*=fixed]').remove()"
+                  style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:15px;font-weight:600;cursor:pointer">
+            Continue
+          </button>
+        </div>`;
+      document.body.appendChild(banner);
+      banner.addEventListener('click', e => { if (e.target === banner) banner.remove(); });
+    });
+  </script>
+</body>
+</html>
+

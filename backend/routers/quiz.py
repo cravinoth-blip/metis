@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
@@ -7,9 +10,47 @@ from database import get_db
 import models
 import schemas
 from auth import get_current_user, calculate_level
-from quiz_data import QUIZZES
+from default_data.quiz_data import QUIZZES
 
 router = APIRouter(tags=["quiz"])
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+
+
+@router.get("/ui/skillgames", response_class=HTMLResponse)
+def skillgames_ui(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    quizzes = []
+    for quiz_id, quiz in QUIZZES.items():
+        best = db.query(func.max(models.QuizAttempt.score_pct)).filter(
+            models.QuizAttempt.user_id == current_user.id,
+            models.QuizAttempt.quiz_id == quiz_id,
+        ).scalar()
+        attempts = db.query(models.QuizAttempt).filter(
+            models.QuizAttempt.user_id == current_user.id,
+            models.QuizAttempt.quiz_id == quiz_id,
+        ).count()
+        quizzes.append({
+            "id":             quiz["id"],
+            "title":          quiz["title"],
+            "description":    quiz.get("description", ""),
+            "category":       quiz.get("category", ""),
+            "difficulty":     quiz.get("difficulty", "beginner"),
+            "min_level":      quiz.get("min_level", 1),
+            "question_count": len(quiz["questions"]),
+            "xp_reward":      quiz.get("xp_reward", 0),
+            "best_score":     round(best) if best is not None else None,
+            "attempts":       attempts,
+        })
+    categories = ["All"] + sorted({q["category"] for q in quizzes if q["category"]})
+    return _templates.TemplateResponse("skillgames.html", {
+        "request":    request,
+        "quizzes":    quizzes,
+        "user":       current_user,
+        "categories": categories,
+    })
 
 
 @router.get("/", response_model=list[schemas.QuizInfo])
@@ -95,6 +136,11 @@ def submit_quiz(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # get_current_user uses its own session which is closed before returning,
+    # leaving current_user detached. Merge re-attaches it to this route's session
+    # so XP/level changes are tracked and committed.
+    current_user = db.merge(current_user)
+
     quiz = QUIZZES.get(quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
