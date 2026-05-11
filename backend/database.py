@@ -8,7 +8,10 @@ load_dotenv()
 
 from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
-_raw_url = os.getenv("DATABASE_URL", "sqlite:///./metis.db")
+# On Vercel the working directory is read-only; use /tmp for the SQLite fallback.
+# In production set DATABASE_URL to a PostgreSQL connection string.
+_sqlite_default = "sqlite:////tmp/metis.db" if os.getenv("VERCEL") else "sqlite:///./metis.db"
+_raw_url = os.getenv("DATABASE_URL", _sqlite_default)
 
 # psycopg2 v2 doesn't support channel_binding — strip it if present
 # Skip URL manipulation for SQLite since urlparse mangles its triple-slash scheme
