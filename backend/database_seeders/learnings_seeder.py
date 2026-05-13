@@ -107,6 +107,7 @@ async def seed_learnings():
                 category=course_data.get("category"),
                 type="course", # all in course_data represent courses
                 level=parse_level(course_data.get("level", "Beginner")),
+                min_level=course_data.get("min_level", 1),
                 tags=f"{course_data.get('category', '').lower().replace(' ', '-')}",
                 estimated_duration_min=parse_duration(course_data.get("duration", "")),
                 xp_reward=sum(m.get("xp_reward", 0) for m in course_data.get("modules", [])),

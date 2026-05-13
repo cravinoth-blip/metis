@@ -122,6 +122,7 @@ class Learning(Base):
     estimated_duration_min = Column(Integer, nullable=True)
     is_mandatory = Column(Boolean, default=False)
     xp_reward = Column(Integer, default=0)
+    min_level = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

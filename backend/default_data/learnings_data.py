@@ -23,6 +23,7 @@ COURSES = {
         "category": "Medical Writing",
         "duration": "2h 30m",
         "level": "Beginner",
+        "min_level": 1,
         "emoji": "✍️",
         "color": "#c07a4a",
         "modules": [
@@ -265,6 +266,7 @@ COURSES = {
         "category": "Evidence & Access",
         "duration": "2h",
         "level": "Intermediate",
+        "min_level": 3,
         "emoji": "🔬",
         "color": "#5a8a6a",
         "modules": [
@@ -456,6 +458,7 @@ COURSES = {
         "category": "AI Skills",
         "duration": "3h",
         "level": "Intermediate",
+        "min_level": 3,
         "emoji": "🧩",
         "color": "#c8922a",
         "modules": [
@@ -717,6 +720,7 @@ COURSES = {
         "category": "Compliance",
         "duration": "1h 30m",
         "level": "Beginner",
+        "min_level": 1,
         "emoji": "⚖️",
         "color": "#7a6aaa",
         "modules": [
@@ -868,6 +872,7 @@ COURSES = {
         "category": "Scientific Visuals",
         "duration": "2h",
         "level": "Beginner",
+        "min_level": 1,
         "emoji": "🎨",
         "color": "#c07a4a",
         "modules": [
@@ -1044,6 +1049,7 @@ COURSES = {
         "category": "Data & Analytics",
         "duration": "2h 30m",
         "level": "Beginner",
+        "min_level": 1,
         "emoji": "📊",
         "color": "#7a6050",
         "modules": [

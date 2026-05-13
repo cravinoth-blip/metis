@@ -864,6 +864,7 @@ async def html_create_learning(
     category: Optional[str] = Form(None),
     lr_type: Optional[str] = Form(None),
     level: int = Form(1),
+    min_level: int = Form(1),
     estimated_duration_min: Optional[str] = Form(None),
     xp_reward: int = Form(0),
     is_mandatory: bool = Form(False),
@@ -879,6 +880,7 @@ async def html_create_learning(
         category=category or None,
         type=lr_type or None,
         level=level,
+        min_level=min_level,
         estimated_duration_min=duration,
         xp_reward=xp_reward,
         is_mandatory=is_mandatory,
@@ -903,6 +905,7 @@ async def html_update_learning_ui(
     category: Optional[str] = Form(None),
     lr_type: Optional[str] = Form(None),
     level: int = Form(1),
+    min_level: int = Form(1),
     estimated_duration_min: Optional[str] = Form(None),
     xp_reward: int = Form(0),
     is_mandatory: bool = Form(False),
@@ -919,6 +922,7 @@ async def html_update_learning_ui(
     lr.category = category or None
     lr.type = lr_type or None
     lr.level = level
+    lr.min_level = min_level
     lr.estimated_duration_min = duration
     lr.xp_reward = xp_reward
     lr.is_mandatory = is_mandatory

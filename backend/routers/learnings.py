@@ -109,6 +109,7 @@ def _learning_rows(user_id: int, db: Session, q: str = '') -> list:
             'id': lr.id, 'title': lr.title, 'description': lr.description,
             'type': lr.type, 'progress_pct': pct, 'modules_completed': completed,
             'total_modules': total, 'is_completed': pct >= 100,
+            'min_level': lr.min_level or 1,
         })
     if q:
         ql = q.lower()
@@ -140,6 +141,7 @@ def ui_learning_list(
         "request": request, "learnings": learnings, "q": q, "tab": tab,
         "not_started_count": len(not_started), "in_progress_count": len(in_progress),
         "completed_count": len(completed),
+        "user_level": current_user.level,
     })
 
 
@@ -295,6 +297,7 @@ def ui_complete_module(
         "request": request, "learnings": learnings, "q": "", "tab": tab,
         "not_started_count": len(not_started), "in_progress_count": len(in_progress),
         "completed_count": len(completed),
+        "user_level": current_user.level,
     })
     # closeModal MUST be last: it removes the triggering element from the DOM,
     # which would prevent subsequent events from bubbling to document.body.

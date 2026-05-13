@@ -1,3 +1,7 @@
+<style>
+  .lr-locked { opacity: .6; }
+  .lr-locked .course-header { cursor: not-allowed; }
+</style>
 <div id="learning-container" style="padding:24px">
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap">
@@ -28,15 +32,17 @@
 
   {% if learnings %}
     {% for lr in learnings %}
-    <div class="course-card" style="margin-bottom:12px">
+    {% set locked = user_level is defined and lr.min_level > 1 and user_level < lr.min_level %}
+    <div class="course-card{% if locked %} lr-locked{% endif %}" style="margin-bottom:12px">
 
       <div class="course-header"
-           style="cursor:pointer"
+           {% if not locked %}
            onclick="toggleModules('{{ lr.id }}', this)"
            hx-get="/api/learnings/ui/learnings/{{ lr.id }}/modules"
            hx-target="#mods-{{ lr.id }}"
            hx-swap="innerHTML"
-           hx-trigger="click once">
+           hx-trigger="click once"
+           {% endif %}>
 
         <div style="flex:1">
 
@@ -45,10 +51,14 @@
             {% if lr.is_completed %}
             <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;margin-left:8px">&#10003; Completed</span>
             {% endif %}
+            {% if locked %}
+            <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#fef3c7;color:#d97706;margin-left:8px">&#128274; Requires Level {{ lr.min_level }}</span>
+            {% endif %}
           </div>
 
           <div class="text-sm text-secondary">{{ lr.description or '' }}</div>
 
+          {% if not locked %}
           <div style="margin-top:12px;max-width:240px">
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
               <span>Progress</span><span>{{ lr.progress_pct }}%</span>
@@ -57,9 +67,10 @@
               <div class="progress-fill" style="width:{{ lr.progress_pct }}%"></div>
             </div>
           </div>
+          {% endif %}
         </div>
 
-        <span class="lr-arrow" style="font-size:18px;margin-left:12px">&#9660;</span>
+        <span class="lr-arrow" style="font-size:18px;margin-left:12px">{% if locked %}&#128274;{% else %}&#9660;{% endif %}</span>
       </div>
 
       <div id="mods-{{ lr.id }}" style="display:none;border-top:1px solid var(--border)"></div>

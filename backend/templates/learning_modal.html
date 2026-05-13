@@ -27,6 +27,10 @@
           <input type="number" name="level" class="form-input" min="1" max="5" value="{{ learning.level if learning else 1 }}">
         </div>
         <div class="form-group">
+          <label class="form-label">Min User Level</label>
+          <input type="number" name="min_level" class="form-input" min="1" value="{{ learning.min_level if learning else 1 }}">
+        </div>
+        <div class="form-group">
           <label class="form-label">Est. Duration (min)</label>
           <input type="number" name="estimated_duration_min" class="form-input" min="1" value="{{ learning.estimated_duration_min if learning and learning.estimated_duration_min else '' }}">
         </div>
