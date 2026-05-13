@@ -35,17 +35,6 @@
     .q-option.q-correct   { border-color: #22c55e; background: #dcfce7; cursor: default; }
     .q-option.q-wrong     { border-color: #ef4444; background: #fee2e2; cursor: default; }
     .q-option.q-revealed  { cursor: default; }
-    .q-badge {
-      flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
-      border: 2px solid var(--border, #e5e7eb);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: var(--text-secondary);
-      transition: border-color .15s, color .15s;
-    }
-    .q-option.q-selected  .q-badge { border-color: var(--primary, #6366f1); color: var(--primary, #6366f1); }
-    .q-option.q-correct   .q-badge { border-color: #22c55e; color: #22c55e; }
-    .q-option.q-wrong     .q-badge { border-color: #ef4444; color: #ef4444; }
-
     /* ── Progress bar ───────────────────────────────────────────────────── */
     .q-progress-track { height: 4px; background: #e5e7eb; border-radius: 2px; }
     .q-progress-fill  { height: 100%; border-radius: 2px; background: var(--primary,#6366f1); transition: width .3s; }
@@ -176,7 +165,7 @@
           <div id="q-options" style="display:flex;flex-direction:column;gap:10px">
             ${(q.options ?? []).map((opt, i) => `
               <div class="q-option" data-idx="${i}">
-                <span class="q-badge">${String.fromCharCode(65 + i)}</span>
+                <input type="${isMulti ? 'checkbox' : 'radio'}" style="flex-shrink:0;width:16px;height:16px;margin-top:2px;accent-color:var(--primary,#6366f1);pointer-events:none" />
                 <span style="line-height:1.5">${opt}</span>
               </div>`).join('')}
           </div>
@@ -202,6 +191,8 @@
         function revealAll(pickedSet) {
           document.querySelectorAll('.q-option').forEach((o, i) => {
             o.classList.add('q-revealed');
+            const inp = o.querySelector('input');
+            if (inp) inp.disabled = true;
             if (correctSet.has(i))       o.classList.add('q-correct');
             else if (pickedSet.has(i))   o.classList.add('q-wrong');
           });
@@ -215,13 +206,15 @@
           const idx = parseInt(opt.dataset.idx);
 
           if (isMulti) {
-            if (selectedSet.has(idx)) { selectedSet.delete(idx); opt.classList.remove('q-selected'); }
-            else                      { selectedSet.add(idx);    opt.classList.add('q-selected'); }
+            const inp = opt.querySelector('input');
+            if (selectedSet.has(idx)) { selectedSet.delete(idx); opt.classList.remove('q-selected'); inp.checked = false; }
+            else                      { selectedSet.add(idx);    opt.classList.add('q-selected');    inp.checked = true; }
             document.getElementById('q-check').disabled = selectedSet.size === 0;
           } else {
             revealed = true;
             const isCorrect = correctSet.has(idx);
             answers.push({ selected: idx, correct: [...correctSet][0] });
+            opt.querySelector('input').checked = true;
             revealAll(new Set([idx]));
             showFeedback(isCorrect);
           }
@@ -283,28 +276,36 @@
         try {
           const res = await apiFetch('POST', `/quiz/${quizId}/submit`, { answers: answers.map(a => a.selected) });
           const xpEarned = res.xp_earned ?? 0;
-          document.getElementById('xp-msg').textContent = res.passed ? 'Quiz passed! 🎉' : 'Try again to improve your score.';
-
           const xpEl = document.getElementById('xp-display');
-          let n = 0;
-          const step = Math.ceil(xpEarned / 25) || 1;
-          const timer = setInterval(() => {
-            n = Math.min(n + step, xpEarned);
-            xpEl.textContent = `+${n} XP`;
-            if (n >= xpEarned) clearInterval(timer);
-          }, 40);
+          const xpMsg = document.getElementById('xp-msg');
+
+          if (res.is_retake) {
+            xpEl.textContent = '+0 XP';
+            xpEl.style.color = 'var(--text-secondary, #6b7280)';
+            xpEl.style.fontSize = '18px';
+            xpMsg.innerHTML = '<span style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:.75em;padding:2px 8px;border-radius:999px;font-weight:600;margin-bottom:6px">Retake</span><br>' + res.message;
+            showToast('Retake complete! 💪 Good effort.', 'info');
+          } else {
+            xpMsg.textContent = res.passed ? 'Quiz passed! 🎉' : 'Try again to improve your score.';
+            let n = 0;
+            const step = Math.ceil(xpEarned / 25) || 1;
+            const timer = setInterval(() => {
+              n = Math.min(n + step, xpEarned);
+              xpEl.textContent = `+${n} XP`;
+              if (n >= xpEarned) clearInterval(timer);
+            }, 40);
+            showToast(
+              res.passed ? `Quiz complete! +${xpEarned} XP` : `Quiz done! +${xpEarned} XP`,
+              res.passed ? 'success' : 'info'
+            );
+            (res.awarded_badges || []).forEach(b => showToast(`${b.emoji} New badge unlocked: ${b.name}!`, 'success'));
+          }
 
           const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
           u.xp = res.new_xp ?? u.xp;
           u.level = res.new_level ?? u.level;
           localStorage.setItem('metis_user', JSON.stringify(u));
           refreshShell();
-
-          showToast(
-            res.passed ? `Quiz complete! +${xpEarned} XP` : `Quiz done! +${xpEarned} XP`,
-            res.passed ? 'success' : 'info'
-          );
-          (res.awarded_badges || []).forEach(b => showToast(`${b.emoji} New badge unlocked: ${b.name}!`, 'success'));
         } catch (e) { showToast(e.message, 'error'); }
       }
 

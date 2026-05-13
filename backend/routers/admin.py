@@ -1633,6 +1633,23 @@ async def html_delete_question(
     return response
 
 
+@router.post("/ui/quizzes/{quiz_id}/questions/reorder")
+async def reorder_quiz_questions(
+    quiz_id: str,
+    data: dict,
+    admin=Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    order: list[str] = data.get("order", [])
+    for position, question_id in enumerate(order):
+        db.query(models.Question).filter(
+            models.Question.id == question_id,
+            models.Question.quiz_id == quiz_id,
+        ).update({"order": position})
+    db.commit()
+    return {"reordered": len(order)}
+
+
 @router.delete("/ui/badges/{badge_id}", response_class=HTMLResponse)
 async def html_delete_badge(
     badge_id: int,

@@ -185,10 +185,19 @@ def submit_quiz(
     )
     score_pct = (correct_count / len(questions)) * 100
     passed = score_pct >= 70
-    base_xp = quiz.xp_reward
-    xp_earned = base_xp if passed else int(base_xp * 0.2)
-    if score_pct == 100:
-        xp_earned = int(base_xp * 1.2)
+
+    already_attempted = db.query(models.QuizAttempt).filter(
+        models.QuizAttempt.user_id == current_user.id,
+        models.QuizAttempt.quiz_id == quiz_id,
+    ).first() is not None
+
+    if already_attempted:
+        xp_earned = 0
+    else:
+        base_xp = quiz.xp_reward
+        xp_earned = base_xp if passed else int(base_xp * 0.2)
+        if score_pct == 100:
+            xp_earned = int(base_xp * 1.2)
 
     db.add(models.QuizAttempt(
         user_id=current_user.id,
@@ -198,13 +207,17 @@ def submit_quiz(
         answers=json.dumps(submission.answers),
         completed_at=datetime.utcnow(),
     ))
-    current_user.xp += xp_earned
-    level, _ = calculate_level(current_user.xp)
-    current_user.level = level
-    newly_awarded = award_badge(current_user, db)
+    newly_awarded = []
+    if xp_earned:
+        current_user.xp += xp_earned
+        level, _ = calculate_level(current_user.xp)
+        current_user.level = level
+        newly_awarded = award_badge(current_user, db)
     db.commit()
 
-    if score_pct == 100:
+    if already_attempted:
+        message = "Good effort! No XP for retakes, but practice makes perfect."
+    elif score_pct == 100:
         message = "Perfect score! Outstanding achievement!"
     elif passed:
         message = "Well done! You passed!"
@@ -223,6 +236,7 @@ def submit_quiz(
         new_xp=current_user.xp,
         new_level=current_user.level,
         awarded_badges=[{"emoji": b.emoji or "🏅", "name": b.name} for b in newly_awarded],
+        is_retake=already_attempted,
     )
 
 

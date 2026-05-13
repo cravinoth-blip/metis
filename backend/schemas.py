@@ -106,6 +106,7 @@ class QuizResult(BaseModel):
     new_xp: int
     new_level: int
     awarded_badges: List[Dict[str, str]] = []
+    is_retake: bool = False
 
 
 class QuizAttemptOut(BaseModel):

@@ -2,16 +2,17 @@
   <div class="modal" style="width:700px">
     <button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&#10005;</button>
     <h3 style="margin-bottom:4px">{{ quiz.title }} — Questions</h3>
-    <p class="text-sm text-secondary" style="margin-bottom:16px">{{ questions|length }} question{{ 's' if questions|length != 1 else '' }}</p>
+    <p class="text-sm text-secondary" style="margin-bottom:16px">Drag and drop rows to reorder. {{ questions|length }} question{{ 's' if questions|length != 1 else '' }}</p>
 
     <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
       <table class="table">
         <thead>
-          <tr><th style="width:36px">#</th><th>Question</th><th>Type</th><th>Actions</th></tr>
+          <tr><th style="width:36px"></th><th style="width:36px">#</th><th>Question</th><th>Type</th><th>Actions</th></tr>
         </thead>
-        <tbody>
+        <tbody id="q-tbody">
           {% for q in questions %}
-          <tr id="question-row-{{ q.id }}">
+          <tr class="draggable-question" draggable="true" data-id="{{ q.id }}" id="question-row-{{ q.id }}" style="cursor:grab">
+            <td style="color:var(--text-secondary);text-align:center;user-select:none">&#9776;</td>
             <td style="color:var(--text-secondary);text-align:center">{{ loop.index }}</td>
             <td style="font-size:.9em">{{ q.question[:90] }}{% if q.question|length > 90 %}&#8230;{% endif %}</td>
             <td>
@@ -33,13 +34,14 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:24px">No questions yet.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px">No questions yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
-    <div style="display:flex;justify-content:flex-end">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button id="save-order-btn" class="btn btn-primary btn-sm">Save Order</button>
       <button class="btn btn-primary btn-sm"
               hx-get="/api/admin/ui/quizzes/{{ quiz.id }}/questions/form"
               hx-target="#modal-container"
@@ -47,3 +49,47 @@
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  const tbody = document.getElementById('q-tbody');
+  const saveBtn = document.getElementById('save-order-btn');
+  const quizId = '{{ quiz.id }}';
+  let draggedRow = null;
+
+  tbody.addEventListener('dragstart', e => {
+    draggedRow = e.target.closest('.draggable-question');
+    if (draggedRow) setTimeout(() => draggedRow.style.opacity = '0.4', 0);
+  });
+  tbody.addEventListener('dragend', () => {
+    if (draggedRow) { draggedRow.style.opacity = '1'; draggedRow = null; }
+  });
+  tbody.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!draggedRow) return;
+    const rows = [...tbody.querySelectorAll('.draggable-question:not([style*="opacity: 0.4"])')];
+    const after = rows.reduce((closest, row) => {
+      const box = row.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height / 2;
+      return (offset < 0 && offset > closest.offset) ? { offset, element: row } : closest;
+    }, { offset: -Infinity }).element;
+    after ? tbody.insertBefore(draggedRow, after) : tbody.appendChild(draggedRow);
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const ids = [...tbody.querySelectorAll('.draggable-question')].map(r => r.dataset.id);
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      await fetch(`/api/admin/ui/quizzes/${quizId}/questions/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: ids }),
+      });
+      saveBtn.textContent = 'Saved!';
+      setTimeout(() => { saveBtn.disabled = false; saveBtn.textContent = 'Save Order'; }, 1500);
+    } catch {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save Order';
+    }
+  });
+})();
+</script>
