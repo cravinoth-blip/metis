@@ -1286,7 +1286,7 @@ def _badges_list(db, q: str = ""):
             func.lower(models.Badge.key).like(t) |
             func.lower(models.Badge.description).like(t)
         )
-    badges = query.order_by(models.Badge.name).all()
+    badges = query.order_by(models.Badge.points_required.desc()).all()
     for b in badges:
         b.award_count = db.query(models.UserBadge).filter(models.UserBadge.badge_id == b.id).count()
     return badges
@@ -1338,6 +1338,7 @@ async def html_update_badge(
     key: str = Form(...),
     description: Optional[str] = Form(None),
     emoji: Optional[str] = Form(None),
+    points_required: int = Form(0),
     admin=Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -1348,6 +1349,7 @@ async def html_update_badge(
     badge.key = key
     badge.description = description or None
     badge.emoji = emoji or None
+    badge.points_required = points_required
     db.commit()
     response = templates.TemplateResponse("badges.html", {"request": request, "badges": _badges_list(db), "q": ""})
     response.headers["HX-Trigger"] = '{"closeModal": true, "showToast": "Badge updated!"}'

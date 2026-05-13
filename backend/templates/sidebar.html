@@ -26,6 +26,10 @@
       <div class="sidebar-user-info">
         <div class="sidebar-user-name" id="sidebar-name">&mdash;</div>
         <div class="sidebar-user-xp" id="sidebar-xp">0 XP &middot; Lv 0</div>
+        <div id="sidebar-badges"
+             hx-get="/api/users/me/sidebar-badges"
+             hx-trigger="load"
+             hx-swap="outerHTML"></div>
       </div>
     </div>
     <button id="admin-logout-btn">&#128682; Sign out</button>

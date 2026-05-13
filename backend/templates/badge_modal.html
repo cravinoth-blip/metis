@@ -21,6 +21,10 @@
       </div>
       {% if badge %}
       <input type="hidden" name="key" value="{{ badge.key }}">
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input name="description" class="form-input" value="{{ badge.description if badge else '' }}">
+      </div>
       {% else %}
       <div class="form-group">
         <label class="form-label">Key *</label>
@@ -31,6 +35,12 @@
         <input name="description" class="form-input">
       </div>
       {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Points Required *</label>
+        <input name="points_required" type="number" min="0" required class="form-input"
+               value="{{ badge.points_required if badge else 0 }}">
+      </div>
 
       <div style="text-align:right;margin-top:16px">
         <button type="submit" class="btn btn-primary">Save</button>

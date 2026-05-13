@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user, calculate_level
+from auth import get_current_user, calculate_level, award_badge
 import models
 
 router = APIRouter(tags=["ai-tools"])
@@ -66,20 +66,25 @@ def log_tool_usage(
     ).first()
 
     new_xp, new_level = current_user.xp, current_user.level
+    newly_awarded = []
 
     if not already:
         db.add(models.ToolUsage(user_id=current_user.id, tool_name=tool_name))
         current_user.xp += LOG_XP
         new_level, _ = calculate_level(current_user.xp)
         current_user.level = new_level
+        newly_awarded = award_badge(current_user, db)
         db.commit()
         db.refresh(current_user)
         new_xp = current_user.xp
 
     html = f'<button class="btn btn-success btn-sm" disabled>&#10003; +{LOG_XP} XP</button>'
     response = HTMLResponse(html)
-    response.headers["HX-Trigger"] = json.dumps({
+    trigger = {
         "showToast": f"+{LOG_XP} XP for using {tool_name}!",
         "updateXP":  {"xp": new_xp, "level": new_level},
-    })
+    }
+    if newly_awarded:
+        trigger["badgesAwarded"] = [{"emoji": b.emoji or "🏅", "name": b.name} for b in newly_awarded]
+    response.headers["HX-Trigger"] = json.dumps(trigger)
     return response

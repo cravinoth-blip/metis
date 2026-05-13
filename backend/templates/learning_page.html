@@ -79,10 +79,8 @@
     const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
 
     document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
-    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
     document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
     document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
-    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
 
     if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
 
@@ -103,9 +101,12 @@
 
     document.body.addEventListener('showToast',  evt => showToast(evt.detail.value || evt.detail));
     document.body.addEventListener('closeModal', ()  => { document.getElementById('modal-container').innerHTML = ''; });
+    document.body.addEventListener('badgesAwarded', evt => {
+      const badges = Array.isArray(evt.detail) ? evt.detail : [evt.detail];
+      badges.forEach(b => showToast(`${b.emoji} New badge unlocked: ${b.name}!`, 'success'));
+    });
     document.body.addEventListener('updateXP',   evt => {
       const { xp, level } = evt.detail;
-      document.getElementById('topbar-xp').textContent  = `⚡ ${xp} XP`;
       document.getElementById('sidebar-xp').textContent = `${xp} XP · Lv ${level}`;
       const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
       u.xp = xp; u.level = level;

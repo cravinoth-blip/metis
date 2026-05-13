@@ -141,3 +141,22 @@ def calculate_level(xp: int) -> tuple[int, int]:
     level = math.floor(xp / 500) + 1
     xp_to_next = (level * 500) - xp
     return level, xp_to_next
+
+
+def award_badge(user, db) -> list:
+    """Award any badges the user now qualifies for. Must be called before db.commit()."""
+    import models
+    existing_ids = {
+        ub.badge_id
+        for ub in db.query(models.UserBadge).filter(models.UserBadge.user_id == user.id).all()
+    }
+    query = db.query(models.Badge).filter(
+        models.Badge.is_active == True,
+        models.Badge.points_required <= user.xp,
+    )
+    if existing_ids:
+        query = query.filter(~models.Badge.id.in_(existing_ids))
+    newly_awarded = query.all()
+    for badge in newly_awarded:
+        db.add(models.UserBadge(user_id=user.id, badge_id=badge.id))
+    return newly_awarded

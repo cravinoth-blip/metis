@@ -12,7 +12,7 @@ import json
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, get_current_admin, calculate_level
+from auth import get_current_user, get_current_admin, calculate_level, award_badge
 # from default_data.course_data import COURSES
 
 
@@ -217,6 +217,7 @@ def ui_complete_module(
     xp_earned = 0
     completion_bonus = 0
     learning_just_completed = False
+    newly_awarded = []
     if not existing:
         # Use xp_reward if set, otherwise default to 10
         xp_earned = getattr(module, 'xp_reward', None) or 10
@@ -267,6 +268,7 @@ def ui_complete_module(
                 new_level, _ = calculate_level(current_user.xp)
                 current_user.level = new_level
 
+        newly_awarded = award_badge(current_user, db)
         db.commit()
         db.refresh(current_user)
 
@@ -300,6 +302,8 @@ def ui_complete_module(
         "showToast": toast,
         "updateXP": {"xp": current_user.xp, "level": current_user.level},
     }
+    if newly_awarded:
+        trigger["badgesAwarded"] = [{"emoji": b.emoji or "🏅", "name": b.name} for b in newly_awarded]
     if learning_just_completed:
         trigger["learningCompleted"] = True
     trigger["closeModal"] = True
@@ -574,6 +578,7 @@ def complete_learning_module(
             new_level, _ = calculate_level(current_user.xp)
             current_user.level = new_level
 
+    award_badge(current_user, db)
     db.commit()
     db.refresh(current_user)
 

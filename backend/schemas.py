@@ -105,6 +105,7 @@ class QuizResult(BaseModel):
     message: str
     new_xp: int
     new_level: int
+    awarded_badges: List[Dict[str, str]] = []
 
 
 class QuizAttemptOut(BaseModel):

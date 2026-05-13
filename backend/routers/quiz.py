@@ -9,7 +9,7 @@ import json
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, calculate_level
+from auth import get_current_user, calculate_level, award_badge
 
 router = APIRouter(tags=["quiz"])
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -201,6 +201,7 @@ def submit_quiz(
     current_user.xp += xp_earned
     level, _ = calculate_level(current_user.xp)
     current_user.level = level
+    newly_awarded = award_badge(current_user, db)
     db.commit()
 
     if score_pct == 100:
@@ -221,6 +222,7 @@ def submit_quiz(
         message=message,
         new_xp=current_user.xp,
         new_level=current_user.level,
+        awarded_badges=[{"emoji": b.emoji or "🏅", "name": b.name} for b in newly_awarded],
     )
 
 

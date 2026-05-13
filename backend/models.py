@@ -214,6 +214,7 @@ class Badge(Base):
     emoji = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    points_required = Column(Integer, nullable=False, default=0)
 
     user_badges = relationship("UserBadge", back_populates="badge")
 

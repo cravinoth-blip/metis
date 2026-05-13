@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, calculate_level
+from auth import get_current_user, calculate_level, award_badge
 from default_data.quiz_data import QUIZZES
 
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -105,6 +105,7 @@ def log_tool_usage(
     current_user.xp += xp_earned
     level, _ = calculate_level(current_user.xp)
     current_user.level = level
+    award_badge(current_user, db)
 
     db.commit()
 
@@ -114,6 +115,26 @@ def log_tool_usage(
         "new_xp": current_user.xp,
         "new_level": current_user.level
     }
+
+
+@router.get("/me/sidebar-badges", response_class=HTMLResponse)
+def sidebar_badges(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_badge_ids = [
+        ub.badge_id
+        for ub in db.query(models.UserBadge).filter(models.UserBadge.user_id == current_user.id).all()
+    ]
+    badges = (
+        db.query(models.Badge)
+        .filter(models.Badge.id.in_(user_badge_ids))
+        .order_by(models.Badge.points_required.desc())
+        .all()
+        if user_badge_ids else []
+    )
+    return _templates.TemplateResponse("sidebar_badges.html", {"request": request, "badges": badges})
 
 
 @router.put("/me/profile", response_model=schemas.UserOut)
@@ -180,6 +201,18 @@ def dashboard_ui(
         for cat, scores in category_scores.items()
     }
 
+    user_badge_ids = [
+        ub.badge_id
+        for ub in db.query(models.UserBadge).filter(models.UserBadge.user_id == current_user.id).all()
+    ]
+    badges = (
+        db.query(models.Badge)
+        .filter(models.Badge.id.in_(user_badge_ids))
+        .order_by(models.Badge.points_required.desc())
+        .all()
+        if user_badge_ids else []
+    )
+
     return _templates.TemplateResponse("dashboard.html", {
         "request":        request,
         "user":           current_user,
@@ -188,4 +221,5 @@ def dashboard_ui(
         "quiz_count":     quiz_count,
         "recent_activity": recent_activity,
         "skill_breakdown": skill_breakdown,
+        "badges":         badges,
     })

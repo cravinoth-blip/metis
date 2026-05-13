@@ -10,7 +10,7 @@ from typing import Optional, List
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, calculate_level, verify_token
+from auth import get_current_user, calculate_level, verify_token, award_badge
 
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
@@ -145,6 +145,7 @@ def register_for_event(
     xp_earned = max(1, int(event.xp_reward * 0.1)) if event.xp_reward > 0 else 5
     current_user.xp += xp_earned
     current_user.level, _ = calculate_level(current_user.xp)
+    award_badge(current_user, db)
 
     db.commit()
     return {

@@ -11,7 +11,7 @@
   <div class="card" style="padding:0;overflow:hidden">
     <table class="table">
       <thead>
-        <tr><th>Icon</th><th>Name</th><th>Key</th><th>Description</th><th>Awarded</th><th>Actions</th></tr>
+        <tr><th>Icon</th><th>Name</th><th>Key</th><th>Description</th><th>Points Required</th><th>Awarded</th><th>Actions</th></tr>
       </thead>
       <tbody>
         {% for b in badges %}
@@ -20,6 +20,7 @@
           <td style="font-weight:500">{{ b.name }}</td>
           <td><code style="font-size:.8em;background:#f1f5f9;padding:2px 6px;border-radius:4px">{{ b.key }}</code></td>
           <td style="font-size:.9em;color:var(--text-secondary)">{{ b.description or '&mdash;' }}</td>
+          <td style="text-align:center">{{ b.points_required }}</td>
           <td style="text-align:center">{{ b.award_count }}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary btn-sm"
@@ -30,7 +31,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:32px">No badges found.</td></tr>
+        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:32px">No badges found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

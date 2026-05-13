@@ -93,10 +93,8 @@
     // ── Bootstrap ──────────────────────────────────────────────────────────
     const user = JSON.parse(localStorage.getItem('metis_user') || '{}');
     document.getElementById('sidebar-avatar').textContent = user.avatar_initials || '??';
-    document.getElementById('topbar-avatar').textContent  = user.avatar_initials || '??';
     document.getElementById('sidebar-name').textContent   = user.full_name || user.username || '—';
     document.getElementById('sidebar-xp').textContent     = `${user.xp ?? 0} XP · Lv ${user.level ?? 0}`;
-    document.getElementById('topbar-xp').textContent      = `⚡ ${user.xp ?? 0} XP`;
     if (user.is_admin) document.getElementById('admin-link').classList.remove('hidden');
 
     document.getElementById('admin-logout-btn').addEventListener('click', async () => {
@@ -122,7 +120,6 @@
     function refreshShell() {
       const u = JSON.parse(localStorage.getItem('metis_user') || '{}');
       document.getElementById('sidebar-xp').textContent = `${u.xp ?? 0} XP · Lv ${u.level ?? 0}`;
-      document.getElementById('topbar-xp').textContent  = `⚡ ${u.xp ?? 0} XP`;
     }
 
     function closeQuiz() {
@@ -307,6 +304,7 @@
             res.passed ? `Quiz complete! +${xpEarned} XP` : `Quiz done! +${xpEarned} XP`,
             res.passed ? 'success' : 'info'
           );
+          (res.awarded_badges || []).forEach(b => showToast(`${b.emoji} New badge unlocked: ${b.name}!`, 'success'));
         } catch (e) { showToast(e.message, 'error'); }
       }
 

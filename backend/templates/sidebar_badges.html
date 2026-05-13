@@ -1,0 +1,9 @@
+<div id="sidebar-badges">
+  {% if badges %}
+  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+    {% for b in badges %}
+    <span title="{{ b.name }}" style="font-size:1.2em;cursor:default">{{ b.emoji or '🏅' }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
